@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 
+## [1.0.0-preview.7] - 2018-11-14
+
+### Minor fixes & improvements:
+
+- Made CancelDisplayedNotification public.
+- Fix an editor script issue on 2018.3.
+- Added an option to not add Remote Notifications capability to the Xcode project. 
+
+## Fixes: 
+
+[1.0.0-preview.6] - 2018-11-14
+
+### Minor fixes & improvements.
+
+## [1.0.0-preview.5] - 2018-11-13
+
+### Minor fixes & improvements.
+
 ## [1.0.0-preview.4] - 2018-10-23
 
 ### Fixes:
