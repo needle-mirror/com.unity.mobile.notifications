@@ -2,12 +2,14 @@
 
 All notable changes to this package will be documented in this file.
 
-## [1.0.0-preview.23] - 2019-05-20
+## [1.0.2] - 2019-07-01
 
 ### Fixes:
 
-- [iOS] Querying app notification settings on iOS 10 will no longer cause a crash.
+- [iOS] Querying notification settings on iOS 10 will no longer cause a crash.
 - [Android] Changing notification icon color now works.
+- Minor UI improvements.
+- Documentation improvements.
 
 ## [1.0.0-preview.22] - 2019-05-20
 
