@@ -13,6 +13,8 @@ using UnityEngine;
 using UnityEditor.Android;
 using Unity.Notifications.iOS;
 using Unity.Notifications;
+using UnityEditor.VersionControl;
+using Object = System.Object;
 
 #pragma warning disable 219
 
@@ -33,6 +35,17 @@ namespace Unity.Notifications
         Alert = 1 << 2,
         All = ~0,
     }
+    
+    [Flags]
+    internal enum AuthorizationOptionEditor
+    {
+        Badge = 1 << 0,
+        Sound = 1 << 1,
+        Alert = 1 << 2,
+        CarPlay = (1 << 3),
+        All = ~0,
+    }
+
 
     [System.Serializable]
     internal class DrawableResourceData
@@ -177,14 +190,26 @@ namespace Unity.Notifications
             }
             set
             {
+                string strValue;
+
+                if (value is Enum)
+                {
+                    strValue = ((int) value).ToString();
+                }
+                else
+                {
+                    strValue = value.ToString();
+                }
+                
+                
                 var index = keys.IndexOf(key);
                 if (index == -1)
                 {
                     keys.Add(key);
-                    values.Add(value.ToString());
+                    values.Add(strValue);
                 }
                 else
-                    values[index] = value.ToString();
+                    values[index] = strValue.ToString();
             }
         }
     }
@@ -209,13 +234,11 @@ namespace Unity.Notifications
 
         private void SaveSetting(NotificationEditorSetting setting, NotificationEditorSettingsCollection values)
         {
-            if (values == null )
-                values = new NotificationEditorSettingsCollection();
-
             if (!values.Contains(setting.key) || values[setting.key].ToString() != setting.val.ToString())
             {
+                
                 values[setting.key] = setting.val;
-                SerializeData();
+                EditorUtility.SetDirty(this);
             }
         }
 
@@ -239,9 +262,6 @@ namespace Unity.Notifications
         
         public T GetAndroidNotificationEditorSettingsValue<T>(string key, T defaultValue)
         {
-            if (AndroidNotificationEditorSettingsValues == null)
-                AndroidNotificationEditorSettingsValues = new NotificationEditorSettingsCollection();
-
             try
             {
                 var val = AndroidNotificationEditorSettingsValues[key];
@@ -250,7 +270,7 @@ namespace Unity.Notifications
             }
             catch (InvalidCastException)
             {
-                AndroidNotificationEditorSettingsValues = new NotificationEditorSettingsCollection();
+                //Just return default value if it's a new setting that was not yet serialized.
             }
 
             AndroidNotificationEditorSettingsValues[key] = defaultValue;
@@ -261,9 +281,6 @@ namespace Unity.Notifications
         public T GetiOSNotificationEditorSettingsValue<T>(string key, T defaultValue)
         {
 
-            if (iOSNotificationEditorSettingsValues == null)
-                iOSNotificationEditorSettingsValues = new NotificationEditorSettingsCollection();
-
             try
             {
                 var val = iOSNotificationEditorSettingsValues[key];
@@ -272,7 +289,8 @@ namespace Unity.Notifications
             }
             catch (InvalidCastException)
             {
-                iOSNotificationEditorSettingsValues = new NotificationEditorSettingsCollection();
+                Debug.LogWarning("Failed loading : " + key + " for type:" + defaultValue.GetType() + "Expe cted : " + iOSNotificationEditorSettingsValues[key].GetType());
+                //Just return default value if it's a new setting that was not yet serialized.
             }
 
             iOSNotificationEditorSettingsValues[key] = defaultValue;
@@ -337,23 +355,45 @@ namespace Unity.Notifications
 
         internal static UnityNotificationEditorManager Initialize()
         {
+           
+                     
+            var assetRelPath = Path.Combine("Assets", ASSET_PATH); 
+            
             var notificationEditorManager =
-                AssetDatabase.LoadAssetAtPath(Path.Combine("Assets", ASSET_PATH),
-                        typeof(UnityNotificationEditorManager)) as
-                    UnityNotificationEditorManager;
-            if (notificationEditorManager == null)
-            {
-                var roothDir = Path.Combine(Application.dataPath, Path.GetDirectoryName(ASSET_PATH));
-                var assetRelPath = Path.Combine("Assets", ASSET_PATH);
+                (UnityNotificationEditorManager) AssetDatabase.LoadAssetAtPath(assetRelPath,
+                    typeof(UnityNotificationEditorManager));
 
-                if (!Directory.Exists(roothDir))
+            if (notificationEditorManager == null)
+            {                
+                var rootDir = Path.Combine(Application.dataPath, Path.GetDirectoryName(ASSET_PATH));
+                
+
+                if (!Directory.Exists(rootDir))
                 {
-                    Directory.CreateDirectory(roothDir);
+                    Directory.CreateDirectory(rootDir);
                 }
 
+                
                 notificationEditorManager = CreateInstance<UnityNotificationEditorManager>();
-                AssetDatabase.CreateAsset(notificationEditorManager, assetRelPath);
-                AssetDatabase.SaveAssets();
+                
+                if (File.Exists(assetRelPath))
+                    AssetDatabase.ImportAsset(assetRelPath);
+                else
+                {
+                    AssetDatabase.CreateAsset(notificationEditorManager, assetRelPath);
+                    AssetDatabase.SaveAssets();
+                }
+            }
+            
+            if (notificationEditorManager.iOSNotificationEditorSettingsValues == null)
+            {
+                notificationEditorManager.iOSNotificationEditorSettingsValues = new NotificationEditorSettingsCollection();
+            }
+
+            if (notificationEditorManager.AndroidNotificationEditorSettingsValues == null)
+            {
+                notificationEditorManager.AndroidNotificationEditorSettingsValues =
+                    new NotificationEditorSettingsCollection();
             }
 
             var iosSettings = new List<NotificationEditorSetting>()
@@ -371,9 +411,9 @@ namespace Unity.Notifications
                             "UnityNotificationDefaultAuthorizationOptions",
                             "Default Notification Authorization Options",
                             "Configure the notification interaction types your app will include in the authorisation request  if  “Request Authorisation on App Launch” is enabled. Alternatively you can specify them when creating a `AuthorizationRequest` from a script.",
-                            notificationEditorManager.GetiOSNotificationEditorSettingsValue<PresentationOption>(
+                            notificationEditorManager.GetiOSNotificationEditorSettingsValue<AuthorizationOption>(
                                 "UnityNotificationDefaultAuthorizationOptions",
-                                (PresentationOption) PresentationOptionEditor.All)
+                                (AuthorizationOption) AuthorizationOption.Alert | AuthorizationOption.Badge | AuthorizationOption.Sound)
                         ),
 
 
@@ -421,6 +461,7 @@ namespace Unity.Notifications
                     false),
             };
 
+            
             if (notificationEditorManager.iOSNotificationEditorSettings == null ||
                 notificationEditorManager.iOSNotificationEditorSettings.Count != iosSettings.Count)
             {
