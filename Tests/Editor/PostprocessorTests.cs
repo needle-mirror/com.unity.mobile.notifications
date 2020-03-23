@@ -1,11 +1,5 @@
-﻿using System.Collections;
-using System.Collections.Generic;
 using System.Xml;
 using NUnit.Framework;
-using UnityEngine;
-using UnityEngine.TestTools;
-
-using Unity.Notifications;
 
 namespace Unity.Notifications.Tests
 {
@@ -16,9 +10,8 @@ namespace Unity.Notifications.Tests
         {
             Assert.AreEqual(true, true);
         }
-        
 
-#if PLATFORM_ANDROID && UNITY_EDITOR                
+#if UNITY_ANDROID
         [Test]
         public void AppendMetadataToManifest_WhenSameValue_Works()
         {
@@ -47,7 +40,7 @@ namespace Unity.Notifications.Tests
   <uses-feature android:name=""android.hardware.touchscreen.multitouch"" android:required=""false"" />
   <uses-feature android:name=""android.hardware.touchscreen.multitouch.distinct"" android:required=""false"" />
 </manifest>";
-            
+
             string targetXmlContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <manifest xmlns:android=""http://schemas.android.com/apk/res/android"" package=""com.UnityTestRunner.UnityTestRunner"" xmlns:tools=""http://schemas.android.com/tools"" android:installLocation=""preferExternal"">
   <supports-screens android:smallScreens=""true"" android:normalScreens=""true"" android:largeScreens=""true"" android:xlargeScreens=""true"" android:anyDensity=""true"" />
@@ -73,19 +66,19 @@ namespace Unity.Notifications.Tests
   <uses-feature android:name=""android.hardware.touchscreen.multitouch"" android:required=""false"" />
   <uses-feature android:name=""android.hardware.touchscreen.multitouch.distinct"" android:required=""false"" />
 </manifest>";
-            
+
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(sourceXmlContent);
 
 
-            var doc = AndroidNotificationResourcesPostProcessor.AppendAndroidMetadataField(xmlDoc, "reschedule_notifications_on_restart", "true");
-               
+            AndroidNotificationResourcesPostProcessor.AppendAndroidMetadataField(null, xmlDoc, "reschedule_notifications_on_restart", "true");
+
             XmlDocument targetXmlDoc = new XmlDocument();
             targetXmlDoc.LoadXml(targetXmlContent);
-            
-            Assert.AreEqual(targetXmlDoc.InnerXml, doc.InnerXml);
+
+            Assert.AreEqual(targetXmlDoc.InnerXml, xmlDoc.InnerXml);
         }
-        
+
         [Test]
         public void AppendMetadataToManifest_WhenOtherValue_Works()
         {
@@ -114,7 +107,7 @@ namespace Unity.Notifications.Tests
   <uses-feature android:name=""android.hardware.touchscreen.multitouch"" android:required=""false"" />
   <uses-feature android:name=""android.hardware.touchscreen.multitouch.distinct"" android:required=""false"" />
 </manifest>";
-            
+
             string targetXmlContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <manifest xmlns:android=""http://schemas.android.com/apk/res/android"" package=""com.UnityTestRunner.UnityTestRunner"" xmlns:tools=""http://schemas.android.com/tools"" android:installLocation=""preferExternal"">
   <supports-screens android:smallScreens=""true"" android:normalScreens=""true"" android:largeScreens=""true"" android:xlargeScreens=""true"" android:anyDensity=""true"" />
@@ -140,20 +133,19 @@ namespace Unity.Notifications.Tests
   <uses-feature android:name=""android.hardware.touchscreen.multitouch"" android:required=""false"" />
   <uses-feature android:name=""android.hardware.touchscreen.multitouch.distinct"" android:required=""false"" />
 </manifest>";
-            
+
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(sourceXmlContent);
 
 
-            var doc = AndroidNotificationResourcesPostProcessor.AppendAndroidMetadataField(xmlDoc, "reschedule_notifications_on_restart", "true");
-               
+            AndroidNotificationResourcesPostProcessor.AppendAndroidMetadataField(null, xmlDoc, "reschedule_notifications_on_restart", "true");
+
             XmlDocument targetXmlDoc = new XmlDocument();
             targetXmlDoc.LoadXml(targetXmlContent);
-            
-            Assert.AreEqual(targetXmlDoc.InnerXml, doc.InnerXml);
+
+            Assert.AreEqual(targetXmlDoc.InnerXml, xmlDoc.InnerXml);
         }
-        
-        
+
         [Test]
         public void AppendMetadataToManifest_WhenNotPresent_Works()
         {
@@ -181,7 +173,7 @@ namespace Unity.Notifications.Tests
   <uses-feature android:name=""android.hardware.touchscreen.multitouch"" android:required=""false"" />
   <uses-feature android:name=""android.hardware.touchscreen.multitouch.distinct"" android:required=""false"" />
 </manifest>";
-            
+
             string targetXmlContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <manifest xmlns:android=""http://schemas.android.com/apk/res/android"" package=""com.UnityTestRunner.UnityTestRunner"" xmlns:tools=""http://schemas.android.com/tools"" android:installLocation=""preferExternal"">
   <supports-screens android:smallScreens=""true"" android:normalScreens=""true"" android:largeScreens=""true"" android:xlargeScreens=""true"" android:anyDensity=""true"" />
@@ -207,19 +199,19 @@ namespace Unity.Notifications.Tests
   <uses-feature android:name=""android.hardware.touchscreen.multitouch"" android:required=""false"" />
   <uses-feature android:name=""android.hardware.touchscreen.multitouch.distinct"" android:required=""false"" />
 </manifest>";
-            
+
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(sourceXmlContent);
 
 
-            var doc = AndroidNotificationResourcesPostProcessor.AppendAndroidMetadataField(xmlDoc, "reschedule_notifications_on_restart", "true");
-               
+            AndroidNotificationResourcesPostProcessor.AppendAndroidMetadataField(null, xmlDoc, "reschedule_notifications_on_restart", "true");
+
             XmlDocument targetXmlDoc = new XmlDocument();
             targetXmlDoc.LoadXml(targetXmlContent);
-            
-            Assert.AreEqual(targetXmlDoc.InnerXml, doc.InnerXml);
+
+            Assert.AreEqual(targetXmlDoc.InnerXml, xmlDoc.InnerXml);
         }
-        
+
         [Test]
         public void AppendMetadataToManifest_WhenOtherFieldPresentWorks()
         {
@@ -248,7 +240,7 @@ namespace Unity.Notifications.Tests
   <uses-feature android:name=""android.hardware.touchscreen.multitouch"" android:required=""false"" />
   <uses-feature android:name=""android.hardware.touchscreen.multitouch.distinct"" android:required=""false"" />
 </manifest>";
-            
+
             string targetXmlContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <manifest xmlns:android=""http://schemas.android.com/apk/res/android"" package=""com.UnityTestRunner.UnityTestRunner"" xmlns:tools=""http://schemas.android.com/tools"" android:installLocation=""preferExternal"">
   <supports-screens android:smallScreens=""true"" android:normalScreens=""true"" android:largeScreens=""true"" android:xlargeScreens=""true"" android:anyDensity=""true"" />
@@ -275,20 +267,19 @@ namespace Unity.Notifications.Tests
   <uses-feature android:name=""android.hardware.touchscreen.multitouch"" android:required=""false"" />
   <uses-feature android:name=""android.hardware.touchscreen.multitouch.distinct"" android:required=""false"" />
 </manifest>";
-            
+
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(sourceXmlContent);
 
 
-            var doc = AndroidNotificationResourcesPostProcessor.AppendAndroidMetadataField(xmlDoc, "do_something", "true");
-               
+            AndroidNotificationResourcesPostProcessor.AppendAndroidMetadataField(null, xmlDoc, "do_something", "true");
+
             XmlDocument targetXmlDoc = new XmlDocument();
             targetXmlDoc.LoadXml(targetXmlContent);
-            
-            Assert.AreEqual(targetXmlDoc.InnerXml, doc.InnerXml);
-          
+
+            Assert.AreEqual(targetXmlDoc.InnerXml, xmlDoc.InnerXml);
         }
-      
+
         [Test]
         public void AppendPermissionToManifest_WhenNoPresentWorks()
         {
@@ -317,7 +308,7 @@ namespace Unity.Notifications.Tests
   <uses-feature android:name=""android.hardware.touchscreen.multitouch"" android:required=""false"" />
   <uses-feature android:name=""android.hardware.touchscreen.multitouch.distinct"" android:required=""false"" />
 </manifest>";
-            
+
             string targetXmlContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <manifest xmlns:android=""http://schemas.android.com/apk/res/android"" package=""com.UnityTestRunner.UnityTestRunner"" xmlns:tools=""http://schemas.android.com/tools"" android:installLocation=""preferExternal"">
   <supports-screens android:smallScreens=""true"" android:normalScreens=""true"" android:largeScreens=""true"" android:xlargeScreens=""true"" android:anyDensity=""true"" />
@@ -344,21 +335,20 @@ namespace Unity.Notifications.Tests
   <uses-feature android:name=""android.hardware.touchscreen.multitouch.distinct"" android:required=""false"" />
   <uses-permission android:name=""android.permission.RECEIVE_BOOT_COMPLETED""/>
 </manifest>";
-            
+
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(sourceXmlContent);
 
 
-            var doc = AndroidNotificationResourcesPostProcessor.AppendAndroidPermissionField(xmlDoc, "android.permission.RECEIVE_BOOT_COMPLETED");
-               
+            AndroidNotificationResourcesPostProcessor.AppendAndroidPermissionField(null, xmlDoc, "android.permission.RECEIVE_BOOT_COMPLETED");
+
             XmlDocument targetXmlDoc = new XmlDocument();
             targetXmlDoc.LoadXml(targetXmlContent);
-            
-            Assert.AreEqual(targetXmlDoc.InnerXml, doc.InnerXml);
-          
+
+            Assert.AreEqual(targetXmlDoc.InnerXml, xmlDoc.InnerXml);
         }
-      
-      [Test]
+
+        [Test]
         public void AppendPermissionToManifest_WhenAlreadyPresentWorks()
         {
             string sourceXmlContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
@@ -387,7 +377,7 @@ namespace Unity.Notifications.Tests
   <uses-feature android:name=""android.hardware.touchscreen.multitouch"" android:required=""false"" />
   <uses-feature android:name=""android.hardware.touchscreen.multitouch.distinct"" android:required=""false"" />
 </manifest>";
-            
+
             string targetXmlContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <manifest xmlns:android=""http://schemas.android.com/apk/res/android"" package=""com.UnityTestRunner.UnityTestRunner"" xmlns:tools=""http://schemas.android.com/tools"" android:installLocation=""preferExternal"">
   <supports-screens android:smallScreens=""true"" android:normalScreens=""true"" android:largeScreens=""true"" android:xlargeScreens=""true"" android:anyDensity=""true"" />
@@ -414,19 +404,19 @@ namespace Unity.Notifications.Tests
   <uses-feature android:name=""android.hardware.touchscreen.multitouch"" android:required=""false"" />
   <uses-feature android:name=""android.hardware.touchscreen.multitouch.distinct"" android:required=""false"" />
 </manifest>";
-            
+
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(sourceXmlContent);
 
 
-            var doc = AndroidNotificationResourcesPostProcessor.AppendAndroidPermissionField(xmlDoc, "android.permission.RECEIVE_BOOT_COMPLETED");
-               
+            AndroidNotificationResourcesPostProcessor.AppendAndroidPermissionField(null, xmlDoc, "android.permission.RECEIVE_BOOT_COMPLETED");
+
             XmlDocument targetXmlDoc = new XmlDocument();
             targetXmlDoc.LoadXml(targetXmlContent);
-            
-            Assert.AreEqual(targetXmlDoc.InnerXml, doc.InnerXml);
-          
+
+            Assert.AreEqual(targetXmlDoc.InnerXml, xmlDoc.InnerXml);
         }
+
 #endif
     }
 }

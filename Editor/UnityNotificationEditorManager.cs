@@ -1,49 +1,36 @@
-﻿#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Xml;
-using System.Xml.Linq;
-using Unity.Collections.LowLevel.Unsafe;
 using UnityEditor;
 using UnityEngine;
 
-using UnityEditor.Android;
 using Unity.Notifications.iOS;
-using Unity.Notifications;
-using UnityEditor.VersionControl;
-using Object = System.Object;
-
-#pragma warning disable 219
 
 [assembly: InternalsVisibleTo("Unity.Notifications.Tests")]
 namespace Unity.Notifications
-{   
+{
     [HelpURL("Packages/com.unity.mobile.notifications/documentation.html")]
     internal class UnityNotificationEditorManager : ScriptableObject
     {
-        
         internal const string ASSET_PATH = "Editor/com.unity.mobile.notifications/NotificationSettings.asset";
-        
+
         [SerializeField]
         public int toolbarInt = 0;
-        
+
         public List<NotificationEditorSetting> iOSNotificationEditorSettings;
         public List<NotificationEditorSetting> AndroidNotificationEditorSettings;
 
-        [SerializeField] 
+        [SerializeField]
         internal NotificationEditorSettingsCollection iOSNotificationEditorSettingsValues;
 
-        [SerializeField] 
+        [SerializeField]
         internal NotificationEditorSettingsCollection AndroidNotificationEditorSettingsValues;
 
         private void SaveSetting(NotificationEditorSetting setting, NotificationEditorSettingsCollection values)
         {
             if (!values.Contains(setting.key) || values[setting.key].ToString() != setting.val.ToString())
             {
-                
                 values[setting.key] = setting.val;
                 EditorUtility.SetDirty(this);
             }
@@ -54,7 +41,7 @@ namespace Unity.Notifications
             EditorUtility.SetDirty(this);
             AssetDatabase.SaveAssets();
         }
-        
+
         public void SaveSetting(NotificationEditorSetting setting, BuildTargetGroup target)
         {
             if (target == BuildTargetGroup.Android)
@@ -66,14 +53,14 @@ namespace Unity.Notifications
                 this.SaveSetting(setting, iOSNotificationEditorSettingsValues);
             }
         }
-        
+
         public T GetAndroidNotificationEditorSettingsValue<T>(string key, T defaultValue)
         {
             try
             {
                 var val = AndroidNotificationEditorSettingsValues[key];
                 if (val != null)
-                    return (T) val;
+                    return (T)val;
             }
             catch (InvalidCastException)
             {
@@ -82,17 +69,15 @@ namespace Unity.Notifications
 
             AndroidNotificationEditorSettingsValues[key] = defaultValue;
             return defaultValue;
-
         }
 
         public T GetiOSNotificationEditorSettingsValue<T>(string key, T defaultValue)
         {
-
             try
             {
                 var val = iOSNotificationEditorSettingsValues[key];
                 if (val != null)
-                    return (T) val;
+                    return (T)val;
             }
             catch (InvalidCastException)
             {
@@ -103,7 +88,6 @@ namespace Unity.Notifications
             iOSNotificationEditorSettingsValues[key] = defaultValue;
             return defaultValue;
         }
-
 
         private void FlattenList(List<NotificationEditorSetting> source, List<NotificationEditorSetting> target)
         {
@@ -117,7 +101,7 @@ namespace Unity.Notifications
                 }
             }
         }
-        
+
         public List<NotificationEditorSetting> iOSNotificationEditorSettingsFlat
         {
             get
@@ -127,7 +111,7 @@ namespace Unity.Notifications
                 return target;
             }
         }
-        
+
         public List<NotificationEditorSetting> AndroidNotificationEditorSettingsFlat
         {
             get
@@ -142,7 +126,7 @@ namespace Unity.Notifications
         public List<DrawableResourceData> TrackedResourceAssets = new List<DrawableResourceData>();
 
         internal Editor CustomEditor { get; set; }
-        
+
         [InitializeOnLoadMethod]
         internal static void OnProjectLoaded()
         {
@@ -159,30 +143,27 @@ namespace Unity.Notifications
             }
         }
 
-
         internal static UnityNotificationEditorManager Initialize()
         {
-           
-                     
-            var assetRelPath = Path.Combine("Assets", ASSET_PATH); 
-            
+            var assetRelPath = Path.Combine("Assets", ASSET_PATH);
+
             var notificationEditorManager =
-                (UnityNotificationEditorManager) AssetDatabase.LoadAssetAtPath(assetRelPath,
+                (UnityNotificationEditorManager)AssetDatabase.LoadAssetAtPath(assetRelPath,
                     typeof(UnityNotificationEditorManager));
 
             if (notificationEditorManager == null)
-            {                
+            {
                 var rootDir = Path.Combine(Application.dataPath, Path.GetDirectoryName(ASSET_PATH));
-                
+
 
                 if (!Directory.Exists(rootDir))
                 {
                     Directory.CreateDirectory(rootDir);
                 }
 
-                
+
                 notificationEditorManager = CreateInstance<UnityNotificationEditorManager>();
-                
+
                 if (File.Exists(assetRelPath))
                     AssetDatabase.ImportAsset(assetRelPath);
                 else
@@ -191,7 +172,7 @@ namespace Unity.Notifications
                     AssetDatabase.SaveAssets();
                 }
             }
-            
+
             if (notificationEditorManager.iOSNotificationEditorSettingsValues == null)
             {
                 notificationEditorManager.iOSNotificationEditorSettingsValues =
@@ -206,7 +187,6 @@ namespace Unity.Notifications
 
             var iosSettings = new List<NotificationEditorSetting>()
             {
-
                 new NotificationEditorSetting(
                     "UnityNotificationRequestAuthorizationOnAppLaunch",
                     "Request Authorization on App Launch",
@@ -221,7 +201,7 @@ namespace Unity.Notifications
                             "Configure the notification interaction types your app will include in the authorisation request  if  “Request Authorisation on App Launch” is enabled. Alternatively you can specify them when creating a `AuthorizationRequest` from a script.",
                             notificationEditorManager.GetiOSNotificationEditorSettingsValue<AuthorizationOption>(
                                 "UnityNotificationDefaultAuthorizationOptions",
-                                (AuthorizationOption) AuthorizationOption.Alert | AuthorizationOption.Badge |
+                                (AuthorizationOption)AuthorizationOption.Alert | AuthorizationOption.Badge |
                                 AuthorizationOption.Sound)
                         ),
                     }),
@@ -249,8 +229,8 @@ namespace Unity.Notifications
                             "The default presentation options for received remote notifications. In order for the specified presentation options to be used your app must had received the authorization to use them (the user might change it at any time). ",
                             notificationEditorManager
                                 .GetiOSNotificationEditorSettingsValue<PresentationOption>(
-                                    "UnityRemoteNotificationForegroundPresentationOptions",
-                                    (PresentationOption) PresentationOptionEditor.All)
+                                "UnityRemoteNotificationForegroundPresentationOptions",
+                                (PresentationOption)PresentationOptionEditor.All)
                         ),
                         new NotificationEditorSetting("UnityUseAPSReleaseEnvironment",
                             "Enable release environment for APS",
@@ -269,7 +249,7 @@ namespace Unity.Notifications
                     false)
             };
 
-            
+
             if (notificationEditorManager.iOSNotificationEditorSettings == null ||
                 notificationEditorManager.iOSNotificationEditorSettings.Count != iosSettings.Count)
             {
@@ -311,7 +291,7 @@ namespace Unity.Notifications
             {
                 notificationEditorManager.AndroidNotificationEditorSettings = androidSettings;
             }
-            
+
             EditorUtility.SetDirty(notificationEditorManager);
             return notificationEditorManager;
         }
@@ -322,7 +302,7 @@ namespace Unity.Notifications
             drawableResource.Id = id;
             drawableResource.Type = type;
             drawableResource.Asset = image;
-         
+
             TrackedResourceAssets.Add(drawableResource);
             SerializeData();
         }
@@ -332,17 +312,17 @@ namespace Unity.Notifications
             TrackedResourceAssets.RemoveAll(i => i.Id == id);
             SerializeData();
         }
-        
+
         internal void RemoveDrawableResource(int i)
         {
             TrackedResourceAssets.RemoveAt(i);
             SerializeData();
         }
-        
+
         internal Texture2D GetDrawableResourceAssetById(string id)
         {
             var res = TrackedResourceAssets.Find(i => i.Id == id);
-            return  res.Asset as Texture2D;
+            return res.Asset as Texture2D;
         }
 
         internal Dictionary<string, byte[]> GenerateDrawableResourcesForExport()
@@ -352,20 +332,20 @@ namespace Unity.Notifications
             {
                 if (!res.Verify())
                 {
-                    Debug.LogWarning( string.Format("Failed exporting: '{0}' AndroidSettings notification icon because:\n {1} ", res.Id,
+                    Debug.LogWarning(string.Format("Failed exporting: '{0}' AndroidSettings notification icon because:\n {1} ", res.Id,
                         DrawableResourceData.GenerateErrorString(res.Errors))
                     );
                     continue;
                 }
-                
+
                 var texture = TextureAssetUtils.ProcessTextureForType(res.Asset, res.Type);
 
                 var scale = res.Type == NotificationIconType.SmallIcon ? 0.375f : 1;
-                                               
-                var textXhdpi = TextureAssetUtils.ScaleTexture(texture, (int) (128 * scale), (int) (128 * scale));
-                var textHdpi  = TextureAssetUtils.ScaleTexture(texture, (int) (96 * scale), (int) (96 * scale));
-                var textMdpi  = TextureAssetUtils.ScaleTexture(texture, (int) (64 * scale), (int) (64 * scale));
-                var textLdpi  = TextureAssetUtils.ScaleTexture(texture, (int) (48 * scale), (int) (48 * scale));
+
+                var textXhdpi = TextureAssetUtils.ScaleTexture(texture, (int)(128 * scale), (int)(128 * scale));
+                var textHdpi  = TextureAssetUtils.ScaleTexture(texture, (int)(96 * scale), (int)(96 * scale));
+                var textMdpi  = TextureAssetUtils.ScaleTexture(texture, (int)(64 * scale), (int)(64 * scale));
+                var textLdpi  = TextureAssetUtils.ScaleTexture(texture, (int)(48 * scale), (int)(48 * scale));
 
                 icons[string.Format("drawable-xhdpi-v11/{0}.png", res.Id)] = textXhdpi.EncodeToPNG();
                 icons[string.Format("drawable-hdpi-v11/{0}.png", res.Id)] = textHdpi.EncodeToPNG();
@@ -374,8 +354,8 @@ namespace Unity.Notifications
 
                 if (res.Type == NotificationIconType.LargeIcon)
                 {
-                    var textXxhdpi = TextureAssetUtils.ScaleTexture(texture, (int) (192 * scale), (int) (192 * scale));
-                    icons[string.Format("drawable-xxhdpi-v11/{0}.png", res.Id)] = textXhdpi.EncodeToPNG();
+                    var textXxhdpi = TextureAssetUtils.ScaleTexture(texture, (int)(192 * scale), (int)(192 * scale));
+                    icons[string.Format("drawable-xxhdpi-v11/{0}.png", res.Id)] = textXxhdpi.EncodeToPNG();
                 }
             }
 
@@ -383,6 +363,3 @@ namespace Unity.Notifications
         }
     }
 }
-#endif
-
-#pragma warning restore 219

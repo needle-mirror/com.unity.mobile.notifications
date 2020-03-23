@@ -1,4 +1,3 @@
-using System.Collections;
 using UnityEngine;
 
 namespace Unity.Notifications.Android
@@ -13,4 +12,5 @@ namespace Unity.Notifications.Android
         {
             AndroidReceivedNotificationMainThreadDispatcher.EnqueueReceivedNotification(notificationIntent);
         }
-    }}
+    }
+}
