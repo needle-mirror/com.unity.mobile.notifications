@@ -1,7 +1,7 @@
 {
   "name": "com.unity.mobile.notifications",
   "displayName": "Mobile Notifications",
-  "version": "1.1.0-preview",
+  "version": "1.2.0-preview",
   "unity": "2018.3",
   "description": "Mobile Notifications package adds support for scheduling local repeatable or one-time notifications on iOS and Android.\n\nRequires iOS 10 and Android 4.4 or above.",
   "keywords": [
@@ -12,10 +12,10 @@
   ],
   "dependencies": {},
   "repository": {
-    "footprint": "3355fceae5ebac272f5c262843cf377c807156c2",
+    "footprint": "e4b3ed521f11d2a0967cd813360334208f94a143",
     "type": "git",
     "url": "https://github.com/Unity-Technologies/com.unity.mobile.notifications.git",
-    "revision": "9c75c6743d61c067dbb4dde9873704c3e61bbfcd"
+    "revision": "bc6521b93ce970fd3a9c8318aaafd4d72f74f056"
   },
   "samples": [
     {

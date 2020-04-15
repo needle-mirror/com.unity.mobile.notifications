@@ -19,7 +19,7 @@ namespace Unity.Notifications
             var needsAlpha = true;
             var minSize = 48;
 
-            if (type == NotificationIconType.LargeIcon)
+            if (type == NotificationIconType.Large)
             {
                 needsAlpha = false;
                 minSize = 192;
@@ -27,7 +27,7 @@ namespace Unity.Notifications
 
             var isSquare = texture.width == texture.height;
             var isLargeEnough = texture.width >= minSize;
-            var hasAlpha = true;// texture.format == TextureFormat.Alpha8;
+            var hasAlpha = true;// TODO: texture.format == TextureFormat.Alpha8;
 
             var isReadable = texture.isReadable;
 
@@ -68,7 +68,7 @@ namespace Unity.Notifications
                 return null;
 
             Texture2D texture;
-            if (type == NotificationIconType.SmallIcon)
+            if (type == NotificationIconType.Small)
             {
                 texture = new Texture2D(sourceTexture.width, sourceTexture.height, TextureFormat.RGBA32, true, false);
                 for (var i  = 0; i < sourceTexture.mipmapCount; i++)

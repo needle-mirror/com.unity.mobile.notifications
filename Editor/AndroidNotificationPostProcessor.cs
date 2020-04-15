@@ -8,7 +8,7 @@ using UnityEditor.Android;
 
 namespace Unity.Notifications
 {
-    public class AndroidNotificationResourcesPostProcessor : IPostGenerateGradleAndroidProject
+    public class AndroidNotificationPostProcessor : IPostGenerateGradleAndroidProject
     {
         const string kAndroidNamespaceURI = "http://schemas.android.com/apk/res/android";
 
@@ -58,7 +58,7 @@ namespace Unity.Notifications
             }
 
             // Get the icons set in the UnityNotificationEditorManager and write them to the res folder, then we can use the icons as res.
-            var icons = UnityNotificationEditorManager.Initialize().GenerateDrawableResourcesForExport();
+            var icons = NotificationSettingsManager.Initialize().GenerateDrawableResourcesForExport();
             foreach (var icon in icons)
             {
                 var fileInfo = new FileInfo(string.Format("{0}/src/main/res/{1}", projectPath, icon.Key));
@@ -81,16 +81,16 @@ namespace Unity.Notifications
 
             InjectReceivers(manifestPath, manifestDoc);
 
-            var settings = UnityNotificationEditorManager.Initialize().AndroidNotificationEditorSettingsFlat;
+            var settings = NotificationSettingsManager.Initialize().AndroidNotificationSettingsFlat;
 
-            var useCustomActivity = (bool)settings.Find(i => i.key == "UnityNotificationAndroidUseCustomActivity").val;
+            var useCustomActivity = (bool)settings.Find(i => i.Key == "UnityNotificationAndroidUseCustomActivity").Value;
             if (useCustomActivity)
             {
-                var customActivity = (string)settings.Find(i => i.key == "UnityNotificationAndroidCustomActivityString").val;
+                var customActivity = (string)settings.Find(i => i.Key == "UnityNotificationAndroidCustomActivityString").Value;
                 AppendAndroidMetadataField(manifestPath, manifestDoc, "custom_notification_android_activity", customActivity);
             }
 
-            var enableRescheduleOnRestart = (bool)settings.Find(i => i.key == "UnityNotificationAndroidRescheduleOnDeviceRestart").val;
+            var enableRescheduleOnRestart = (bool)settings.Find(i => i.Key == "UnityNotificationAndroidRescheduleOnDeviceRestart").Value;
             if (enableRescheduleOnRestart)
             {
                 AppendAndroidMetadataField(manifestPath, manifestDoc, "reschedule_notifications_on_restart", "true");

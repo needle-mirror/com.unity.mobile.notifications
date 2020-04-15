@@ -9,7 +9,7 @@ using UnityEngine;
 using Unity.Notifications;
 using Unity.Notifications.iOS;
 
-public class iOSNotificationPostProcess : MonoBehaviour
+public class iOSNotificationPostProcessor : MonoBehaviour
 {
     [PostProcessBuild]
     public static void OnPostprocessBuild(BuildTarget buildTarget, string path)
@@ -38,13 +38,11 @@ public class iOSNotificationPostProcess : MonoBehaviour
                 unityFrameworkTarget = mainTarget;
             }
 
-            var settings = UnityNotificationEditorManager.Initialize().iOSNotificationEditorSettingsFlat;
+            var settings = NotificationSettingsManager.Initialize().iOSNotificationSettingsFlat;
 
-            var addPushNotificationCapability = (bool)settings
-                .Find(i => i.key == "UnityAddRemoteNotificationCapability").val == true;;
+            var addPushNotificationCapability = (bool)settings.Find(i => i.Key == "UnityAddRemoteNotificationCapability").Value;
 
-            var needLocationFramework = (bool)settings
-                .Find(i => i.key == "UnityUseLocationNotificationTrigger").val == true;;
+            var needLocationFramework = (bool)settings.Find(i => i.Key == "UnityUseLocationNotificationTrigger").Value;
 
             proj.AddFrameworkToProject(unityFrameworkTarget, "UserNotifications.framework", true);
 
@@ -55,11 +53,11 @@ public class iOSNotificationPostProcess : MonoBehaviour
 
             if (addPushNotificationCapability)
             {
-                var useReleaseAPSEnvSetting = settings.Find(i => i.key == "UnityUseAPSReleaseEnvironment");
+                var useReleaseAPSEnvSetting = settings.Find(i => i.Key == "UnityUseAPSReleaseEnvironment");
                 var useReleaseAPSEnv = false;
 
                 if (useReleaseAPSEnvSetting != null)
-                    useReleaseAPSEnv = (bool)useReleaseAPSEnvSetting.val;
+                    useReleaseAPSEnv = (bool)useReleaseAPSEnvSetting.Value;
 
                 var entitlementsFileName = proj.GetBuildPropertyForAnyConfig(mainTarget, "CODE_SIGN_ENTITLEMENTS");
                 if (entitlementsFileName == null)
@@ -101,10 +99,10 @@ public class iOSNotificationPostProcess : MonoBehaviour
 
             foreach (var setting in settings)
             {
-                if (setting.val.GetType() == typeof(bool))
-                    rootDict.SetBoolean(setting.key, (bool)setting.val);
-                else if (setting.val.GetType() == typeof(PresentationOption) || setting.val.GetType() == typeof(AuthorizationOption))
-                    rootDict.SetInteger(setting.key, (int)setting.val);
+                if (setting.Value.GetType() == typeof(bool))
+                    rootDict.SetBoolean(setting.Key, (bool)setting.Value);
+                else if (setting.Value.GetType() == typeof(PresentationOption) || setting.Value.GetType() == typeof(AuthorizationOption))
+                    rootDict.SetInteger(setting.Key, (int)setting.Value);
             }
 
             if (addPushNotificationCapability)
