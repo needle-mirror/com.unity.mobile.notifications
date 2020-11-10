@@ -10,23 +10,23 @@ namespace Unity.Notifications.Android
     /// </summary>
     public enum NotificationStatus
     {
-        //// <summary>
-        /// Status of the specified notification cannot be determined, this is only supported on Android Marshmallow (6.0) and above.
+        /// <summary>
+        /// Status of a specified notification cannot be determined. This is only supported on Android Marshmallow (6.0) and above.
         /// </summary>
         Unavailable = -1,
 
-        //// <summary>
-        /// A notification with the specified id could not be found.
+        /// <summary>
+        /// A notification with a specified id could not be found.
         /// </summary>
         Unknown = 0,
 
-        //// <summary>
-        /// A notification with the specified is scheduled but not yet delivered.
+        /// <summary>
+        /// A notification with a specified id is scheduled but not yet delivered.
         /// </summary>
         Scheduled = 1,
 
-        //// <summary>
-        /// A notification with the specified was already delivered.
+        /// <summary>
+        /// A notification with a specified id was already delivered.
         /// </summary>
         Delivered = 2,
     }
@@ -36,6 +36,9 @@ namespace Unity.Notifications.Android
     /// </summary>
     public class AndroidNotificationCenter
     {
+        /// <summary>
+        /// The delegate type for the notification received callbacks.
+        /// </summary>
         public delegate void NotificationReceivedCallback(AndroidNotificationIntentData data);
 
         /// <summary>
@@ -43,9 +46,15 @@ namespace Unity.Notifications.Android
         /// </summary>
         public static event NotificationReceivedCallback OnNotificationReceived = delegate {};
 
+        private static AndroidJavaClass s_NotificationManagerClass;
         private static AndroidJavaObject s_NotificationManager;
+        private static AndroidJavaObject s_NotificationManagerContext;
+        private static AndroidJavaObject s_CurrentActivity;
         private static bool s_Initialized;
 
+        /// <summary>
+        /// Initialize the AndroidNotificationCenter class.
+        /// </summary>
         public static bool Initialize()
         {
             if (s_Initialized)
@@ -60,15 +69,18 @@ namespace Unity.Notifications.Android
 #if UNITY_EDITOR || !UNITY_ANDROID
             s_NotificationManager = null;
             s_Initialized = false;
+            s_NotificationManagerClass = null;
+            s_NotificationManagerContext = null;
+            s_CurrentActivity = null;
 #elif UNITY_ANDROID
-            AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
-            AndroidJavaObject activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
-            AndroidJavaObject context = activity.Call<AndroidJavaObject>("getApplicationContext");
+            var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+            s_CurrentActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+            var context = s_CurrentActivity.Call<AndroidJavaObject>("getApplicationContext");
 
-            AndroidJavaClass managerClass = new AndroidJavaClass("com.unity.androidnotifications.UnityNotificationManager");
-
-            s_NotificationManager = managerClass.CallStatic<AndroidJavaObject>("getNotificationManagerImpl", context, activity);
+            s_NotificationManagerClass = new AndroidJavaClass("com.unity.androidnotifications.UnityNotificationManager");
+            s_NotificationManager = s_NotificationManagerClass.CallStatic<AndroidJavaObject>("getNotificationManagerImpl", context, s_CurrentActivity);
             s_NotificationManager.Call("setNotificationCallback", new NotificationCallback());
+            s_NotificationManagerContext = s_NotificationManager.Get<AndroidJavaObject>("mContext");
 
             s_Initialized = true;
 #endif
@@ -295,11 +307,7 @@ namespace Unity.Notifications.Android
             if (!Initialize())
                 return null;
 
-            AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
-            AndroidJavaObject currentActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
-
-            AndroidJavaObject intent = currentActivity.Call<AndroidJavaObject>("getIntent");
-
+            var intent = s_CurrentActivity.Call<AndroidJavaObject>("getIntent");
             return ParseNotificationIntentData(intent);
         }
 
@@ -311,11 +319,7 @@ namespace Unity.Notifications.Android
                 Debug.LogError("Failed to schedule notification, it did not contain a valid FireTime");
             }
 
-            AndroidJavaClass managerClass =
-                new AndroidJavaClass("com.unity.androidnotifications.UnityNotificationManager");
-            AndroidJavaObject context = s_NotificationManager.Get<AndroidJavaObject>("mContext");
-
-            AndroidJavaObject notificationIntent = new AndroidJavaObject("android.content.Intent", context, managerClass);
+            var notificationIntent = new AndroidJavaObject("android.content.Intent", s_NotificationManagerContext, s_NotificationManagerClass);
 
             notificationIntent.Call<AndroidJavaObject>("putExtra", "id", id);
             notificationIntent.Call<AndroidJavaObject>("putExtra", "channelID", channelId);

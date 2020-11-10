@@ -47,6 +47,7 @@ namespace Unity.Notifications
         public override void OnDeactivate()
         {
             m_SettingsManager.SaveSettings(false);
+            SettingsService.NotifySettingsProviderChanged();
         }
 
         private void Initialize()
@@ -208,12 +209,11 @@ namespace Unity.Notifications
         public override void OnGUI(string searchContext)
         {
             // This has to be called to sync all the changes between m_SettingsManager and m_SettingsManagerObject.
-            m_SettingsManagerObject.Update();
+            if (m_SettingsManagerObject.targetObject != null)
+                m_SettingsManagerObject.Update();
 
             var noHeightRect = GUILayoutUtility.GetRect(GUIContent.none, EditorStyles.label, GUILayout.ExpandWidth(true), GUILayout.Height(0));
             var width = noHeightRect.width;
-            if (width < k_SlotSize * 10)
-                width = k_SlotSize * 10;
 
             var totalRect = new Rect(k_Padding, 0f, width - k_Padding, Screen.height);
 
