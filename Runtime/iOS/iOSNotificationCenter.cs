@@ -67,7 +67,6 @@ namespace Unity.Notifications.iOS
         private static event NotificationReceivedCallback s_OnRemoteNotificationReceived = delegate {};
 
         internal delegate void AuthorizationRequestCompletedCallback(iOSAuthorizationRequestData data);
-        internal static event AuthorizationRequestCompletedCallback OnAuthorizationRequestCompleted = delegate {};
 
         /// <summary>
         /// The number currently set as the badge of the app icon.
@@ -100,8 +99,7 @@ namespace Unity.Notifications.iOS
             if (!Initialize())
                 return;
 
-            notification.Verify();
-            iOSNotificationsWrapper.ScheduleLocalNotification(notification.data);
+            iOSNotificationsWrapper.ScheduleLocalNotification(notification.GetDataForSending());
         }
 
         /// <summary>
@@ -109,14 +107,7 @@ namespace Unity.Notifications.iOS
         /// </summary>
         public static iOSNotification[] GetScheduledNotifications()
         {
-            var iOSNotifications = new List<iOSNotification>();
-
-            foreach (var d in iOSNotificationsWrapper.GetScheduledNotificationData())
-            {
-                iOSNotifications.Add(new iOSNotification(d));
-            }
-
-            return iOSNotifications.ToArray();
+            return NotificationDataToNotifications(iOSNotificationsWrapper.GetScheduledNotificationData());
         }
 
         /// <summary>
@@ -124,14 +115,17 @@ namespace Unity.Notifications.iOS
         /// </summary>
         public static iOSNotification[] GetDeliveredNotifications()
         {
-            var iOSNotifications = new List<iOSNotification>();
+            return NotificationDataToNotifications(iOSNotificationsWrapper.GetDeliveredNotificationData());
+        }
 
-            foreach (var d in iOSNotificationsWrapper.GetDeliveredNotificationData())
-            {
-                iOSNotifications.Add(new iOSNotification(d));
-            }
+        private static iOSNotification[] NotificationDataToNotifications(iOSNotificationData[] notificationData)
+        {
+            var iOSNotifications = new iOSNotification[notificationData == null ? 0 : notificationData.Length];
 
-            return iOSNotifications.ToArray();
+            for (int i = 0; i < iOSNotifications.Length; ++i)
+                iOSNotifications[i] = new iOSNotification(notificationData[i]);
+
+            return iOSNotifications;
         }
 
         /// <summary>
@@ -147,10 +141,7 @@ namespace Unity.Notifications.iOS
             if (data == null)
                 return null;
 
-            var notification = new iOSNotification(data.Value.identifier);
-            notification.data = data.Value;
-
-            return notification;
+            return new iOSNotification(data.Value);
         }
 
         /// <summary>
@@ -199,21 +190,14 @@ namespace Unity.Notifications.iOS
 
         internal static void OnReceivedRemoteNotification(iOSNotificationData data)
         {
-            var notification = new iOSNotification(data.identifier);
-            notification.data = data;
+            var notification = new iOSNotification(data);
             s_OnRemoteNotificationReceived(notification);
         }
 
         internal static void OnSentNotification(iOSNotificationData data)
         {
-            var notification = new iOSNotification(data.identifier);
-            notification.data = data;
+            var notification = new iOSNotification(data);
             s_OnNotificationReceived(notification);
-        }
-
-        internal static void OnFinishedAuthorizationRequest(iOSAuthorizationRequestData data)
-        {
-            OnAuthorizationRequestCompleted(data);
         }
     }
 }

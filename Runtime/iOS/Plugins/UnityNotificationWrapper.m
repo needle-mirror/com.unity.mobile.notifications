@@ -8,19 +8,27 @@
 
 #import "UnityNotificationManager.h"
 
-void _FreeUnmanagedMemory(void* ptr)
+
+int _NativeSizeof_iOSNotificationAuthorizationData()
 {
-    if (ptr != NULL)
-    {
-        free(ptr);
-        ptr = NULL;
-    }
+    return sizeof(iOSNotificationAuthorizationData);
 }
 
-void _FreeUnmanagediOSNotificationData(iOSNotificationData* ptr)
+int _NativeSizeof_iOSNotificationData()
 {
-    freeiOSNotificationData(ptr);
-    ptr = NULL;
+    return sizeof(iOSNotificationData);
+}
+
+int _NativeSizeof_NotificationSettingsData()
+{
+    return sizeof(NotificationSettingsData);
+}
+
+void _FreeUnmanagediOSNotificationDataArray(iOSNotificationData* ptr, int count)
+{
+    for (int i = 0; i < count; ++i)
+        freeiOSNotificationData(&ptr[i]);
+    free(ptr);
 }
 
 void _SetAuthorizationRequestReceivedDelegate(AuthorizationRequestResponse callback)
@@ -41,57 +49,70 @@ void _SetRemoteNotificationReceivedDelegate(NotificationDataReceivedResponse cal
     manager.onRemoteNotificationReceivedCallback = callback;
 }
 
-void _RequestAuthorization(int options, BOOL registerRemote)
+void _RequestAuthorization(void* request, int options, BOOL registerRemote)
 {
     UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
-    [manager requestAuthorization: options withRegisterRemote: registerRemote];
+    [manager requestAuthorization: options withRegisterRemote: registerRemote forRequest: request];
     UNUserNotificationCenter* center = [UNUserNotificationCenter currentNotificationCenter];
     center.delegate = manager;
 }
 
-void _ScheduleLocalNotification(struct iOSNotificationData* data)
+void _ScheduleLocalNotification(iOSNotificationData data)
 {
     UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
-    [manager scheduleLocalNotification: data];
+    [manager scheduleLocalNotification: &data];
 }
 
-NotificationSettingsData* _GetNotificationSettings()
+NotificationSettingsData _GetNotificationSettings()
 {
     UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
-    // The native NotificationSettingsData pointer will be freed by GetNotificationSettings() in the Runtime/iOS/iOSNotificationsWrapper.cs.
     return UNNotificationSettingsToNotificationSettingsData(manager.cachedNotificationSettings);
 }
 
-int _GetScheduledNotificationDataCount()
+iOSNotificationData* _GetScheduledNotificationDataArray(int* count)
 {
     UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
-    return (int)manager.cachedPendingNotificationRequests.count;
-}
-
-iOSNotificationData* _GetScheduledNotificationDataAt(int index)
-{
-    UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
-    if (index >= manager.cachedPendingNotificationRequests.count)
+    NSArray<UNNotificationRequest*>* pendingNotificationRequests = manager.cachedPendingNotificationRequests;
+    if (pendingNotificationRequests == nil)
+    {
+        *count = 0;
+        return NULL;
+    }
+    *count = (int)pendingNotificationRequests.count;
+    if (*count == 0)
         return NULL;
 
-    UNNotificationRequest * request = manager.cachedPendingNotificationRequests[index];
-    return UNNotificationRequestToiOSNotificationData(request);
+    iOSNotificationData* ret = (iOSNotificationData*)malloc(*count * sizeof(iOSNotificationData));
+    for (int i = 0; i < *count; ++i)
+    {
+        UNNotificationRequest *request = pendingNotificationRequests[i];
+        ret[i] = UNNotificationRequestToiOSNotificationData(request);
+    }
+
+    return ret;
 }
 
-int _GetDeliveredNotificationDataCount()
+iOSNotificationData* _GetDeliveredNotificationDataArray(int* count)
 {
     UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
-    return (int)manager.cachedDeliveredNotifications.count;
-}
-
-iOSNotificationData* _GetDeliveredNotificationDataAt(int index)
-{
-    UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
-    if (index >= manager.cachedDeliveredNotifications.count)
+    NSArray<UNNotification*>* deliveredNotifications = manager.cachedDeliveredNotifications;
+    if (deliveredNotifications == nil)
+    {
+        *count = 0;
+        return NULL;
+    }
+    *count = (int)deliveredNotifications.count;
+    if (*count == 0)
         return NULL;
 
-    UNNotification* notification = manager.cachedDeliveredNotifications[index];
-    return UNNotificationRequestToiOSNotificationData(notification.request);
+    iOSNotificationData* ret = (iOSNotificationData*)malloc(*count * sizeof(iOSNotificationData));
+    for (int i = 0; i < *count; ++i)
+    {
+        UNNotification* notification = deliveredNotifications[i];
+        ret[i] = UNNotificationRequestToiOSNotificationData(notification.request);
+    }
+
+    return ret;
 }
 
 void _RemoveScheduledNotification(const char* identifier)
@@ -141,7 +162,9 @@ bool _GetAppOpenedUsingNotification()
 iOSNotificationData* _GetLastNotificationData()
 {
     UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
-    return UNNotificationRequestToiOSNotificationData(manager.lastReceivedNotification.request);
+    iOSNotificationData* ret = (iOSNotificationData*)malloc(sizeof(iOSNotificationData));
+    *ret = UNNotificationRequestToiOSNotificationData(manager.lastReceivedNotification.request);
+    return ret;
 }
 
 #endif
