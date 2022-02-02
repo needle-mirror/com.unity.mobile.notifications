@@ -36,7 +36,7 @@ namespace Unity.Notifications.iOS
         }
 
         private static bool s_OnNotificationReceivedCallbackSet;
-        private static event NotificationReceivedCallback s_OnNotificationReceived = delegate {};
+        private static event NotificationReceivedCallback s_OnNotificationReceived = delegate { };
 
         /// <summary>
         /// Subscribe to this event to receive a callback whenever a remote notification is received while the app is in foreground,
@@ -64,7 +64,7 @@ namespace Unity.Notifications.iOS
         }
 
         private static bool s_OnRemoteNotificationReceivedCallbackSet;
-        private static event NotificationReceivedCallback s_OnRemoteNotificationReceived = delegate {};
+        private static event NotificationReceivedCallback s_OnRemoteNotificationReceived = delegate { };
 
         internal delegate void AuthorizationRequestCompletedCallback(iOSAuthorizationRequestData data);
 
@@ -94,6 +94,7 @@ namespace Unity.Notifications.iOS
         /// <summary>
         /// Schedules a local notification for delivery.
         /// </summary>
+        /// <param name="notification">Notification to schedule</param>
         public static void ScheduleNotification(iOSNotification notification)
         {
             if (!Initialize())
@@ -105,6 +106,7 @@ namespace Unity.Notifications.iOS
         /// <summary>
         /// Returns all notifications that are currently scheduled.
         /// </summary>
+        /// <returns>Array of scheduled notifications</returns>
         public static iOSNotification[] GetScheduledNotifications()
         {
             return NotificationDataToNotifications(iOSNotificationsWrapper.GetScheduledNotificationData());
@@ -113,6 +115,7 @@ namespace Unity.Notifications.iOS
         /// <summary>
         /// Returns all of the app's delivered notifications that are currently shown in the Notification Center.
         /// </summary>
+        /// <returns>Array of delivered notifications</returns>
         public static iOSNotification[] GetDeliveredNotifications()
         {
             return NotificationDataToNotifications(iOSNotificationsWrapper.GetDeliveredNotificationData());
@@ -131,6 +134,7 @@ namespace Unity.Notifications.iOS
         /// <summary>
         /// Use this to retrieve the last local or remote notification received by the app.
         /// </summary>
+        /// <seealso cref="SetNotificationCategories(IEnumerable{iOSNotificationCategory})"/>
         /// <returns>
         /// Returns the last local or remote notification used to open the app or clicked on by the user. If no notification is available it returns null.
         /// </returns>
@@ -145,8 +149,28 @@ namespace Unity.Notifications.iOS
         }
 
         /// <summary>
+        /// Get users chosen action for the last actionable notification, null if no action was chosen.
+        /// </summary>
+        /// <seealso cref="SetNotificationCategories(IEnumerable{iOSNotificationCategory})"/>
+        /// <returns>Action identifier</returns>
+        public static string GetLastRespondedNotificationAction()
+        {
+            return iOSNotificationsWrapper.GetLastRespondedNotificationAction();
+        }
+
+        /// <summary>
+        /// Get users text input for the last actionable notification with input support, null if no input.
+        /// </summary>
+        /// <returns>Text user extered in the input field from notification</returns>
+        public static string GetLastRespondedNotificationUserText()
+        {
+            return iOSNotificationsWrapper.GetLastRespondedNotificationUserText();
+        }
+
+        /// <summary>
         /// Unschedules the specified notification.
         /// </summary>
+        /// <param name="identifier">Identifier for the notification to be removed</param>
         public static void RemoveScheduledNotification(string identifier)
         {
             if (Initialize())
@@ -156,6 +180,7 @@ namespace Unity.Notifications.iOS
         /// <summary>
         /// Removes the specified notification from Notification Center.
         /// </summary>
+        /// <param name="identifier">Identifier for the notification to be removed</param>
         public static void RemoveDeliveredNotification(string identifier)
         {
             if (Initialize())
@@ -183,9 +208,22 @@ namespace Unity.Notifications.iOS
         /// <summary>
         /// Get the notification settings for this app.
         /// </summary>
+        /// <returns>Notification settings</returns>
         public static iOSNotificationSettings GetNotificationSettings()
         {
             return iOSNotificationsWrapper.GetNotificationSettings();
+        }
+
+        /// <summary>
+        /// Set (replace if already set) notification categories.
+        /// Use this to setup actionable notifications. You can specify actions for each category,
+        /// which then will be available for each notification with the same category identifier.
+        /// Categories must be registered before sending notifications.
+        /// </summary>
+        /// <param name="categories">All notification categories for your application</param>
+        public static void SetNotificationCategories(IEnumerable<iOSNotificationCategory> categories)
+        {
+            iOSNotificationsWrapper.SetNotificationCategories(categories);
         }
 
         internal static void OnReceivedRemoteNotification(iOSNotificationWithUserInfo data)
@@ -198,6 +236,18 @@ namespace Unity.Notifications.iOS
         {
             var notification = new iOSNotification(data);
             s_OnNotificationReceived(notification);
+        }
+
+        /// <summary>
+        /// Opens Settings.
+        /// On iOS there is no way to open notification settings specifically, but you can open settings app with current application settings.
+        /// Note, that application will be suspended, since opening settings is switching to different application.
+        /// </summary>
+        public static void OpenNotificationSettings()
+        {
+#if !UNITY_EDITOR
+            iOSNotificationsWrapper._OpenNotificationSettings();
+#endif
         }
     }
 }

@@ -13,6 +13,39 @@
 
 #import "UnityNotificationData.h"
 
+
+static NSString* ParseNotificationDataObject(id obj)
+{
+    if ([obj isKindOfClass: [NSString class]])
+        return obj;
+    else if ([obj isKindOfClass: [NSNumber class]])
+    {
+        NSNumber* numberVal = obj;
+        if (CFBooleanGetTypeID() == CFGetTypeID((__bridge CFTypeRef)(obj)))
+            return numberVal.boolValue ? @"true" : @"false";
+        return numberVal.stringValue;
+    }
+    else if ([NSJSONSerialization isValidJSONObject: obj])
+    {
+        NSError* error;
+        NSData* data = [NSJSONSerialization dataWithJSONObject: obj options: NSJSONWritingPrettyPrinted error: &error];
+        if (data)
+        {
+            NSString* v = [[NSString alloc] initWithData: data encoding: NSUTF8StringEncoding];
+            return v;
+        }
+        else
+        {
+            NSLog(@"Failed parsing notification userInfo value: %@", error);
+        }
+    }
+    else
+        NSLog(@"Failed parsing notification userInfo value");
+
+    NSObject* o = obj;
+    return o.description;
+}
+
 NotificationSettingsData UNNotificationSettingsToNotificationSettingsData(UNNotificationSettings* settings)
 {
     NotificationSettingsData settingsData;
@@ -49,7 +82,7 @@ void initiOSNotificationData(iOSNotificationData* notificationData)
     notificationData->userInfo = NULL;
 }
 
-void parseCustomizedData(iOSNotificationData* notificationData, UNNotificationRequest* request)
+static void parseCustomizedData(iOSNotificationData* notificationData, UNNotificationRequest* request)
 {
     NSDictionary* userInfo = request.content.userInfo;
     NSObject* customizedData = [userInfo objectForKey: @"data"];
@@ -62,32 +95,9 @@ void parseCustomizedData(iOSNotificationData* notificationData, UNNotificationRe
     }
 
     // For push notifications, we have to handle more cases.
-    NSString* strData;
-    if ([NSJSONSerialization isValidJSONObject: customizedData])
-    {
-        NSError* error;
-        NSData* data = [NSJSONSerialization dataWithJSONObject: customizedData options: NSJSONWritingPrettyPrinted error: &error];
-        if (!data)
-        {
-            NSLog(@"Failed parsing notification userInfo[\"data\"]: %@", error);
-            return;
-        }
-
-        strData = [[NSString alloc] initWithData: data encoding: NSUTF8StringEncoding];
-    }
-    else
-    {
-        // Convert bool defined with true/false in payload to "true"/"false", otherwise it will be converted to 1/0.
-        if ([customizedData isKindOfClass: [NSNumber class]] && CFBooleanGetTypeID() == CFGetTypeID((__bridge CFTypeRef)(customizedData)))
-        {
-            NSNumber* number = (NSNumber*)customizedData;
-            strData = number.boolValue ? @"true" : @"false";
-        }
-        else
-        {
-            strData = customizedData.description;
-        }
-    }
+    NSString* strData = ParseNotificationDataObject(customizedData);
+    if (strData == nil)
+        NSLog(@"Failed parsing notification userInfo[\"data\"]");
 
     NSMutableDictionary* parsedUserInfo = [NSMutableDictionary dictionaryWithDictionary: userInfo];
     [parsedUserInfo setValue: strData forKey: @"data"];
@@ -125,8 +135,8 @@ iOSNotificationData UNNotificationRequestToiOSNotificationData(UNNotificationReq
         notificationData.triggerType = TIME_TRIGGER;
 
         UNTimeIntervalNotificationTrigger* timeTrigger = (UNTimeIntervalNotificationTrigger*)request.trigger;
-        notificationData.timeTriggerInterval = timeTrigger.timeInterval;
-        notificationData.repeats = timeTrigger.repeats;
+        notificationData.trigger.timeInterval.interval = timeTrigger.timeInterval;
+        notificationData.trigger.timeInterval.repeats = timeTrigger.repeats;
     }
     else if ([request.trigger isKindOfClass: [UNCalendarNotificationTrigger class]])
     {
@@ -135,12 +145,12 @@ iOSNotificationData UNNotificationRequestToiOSNotificationData(UNNotificationReq
         UNCalendarNotificationTrigger* calendarTrigger = (UNCalendarNotificationTrigger*)request.trigger;
         NSDateComponents* date = calendarTrigger.dateComponents;
 
-        notificationData.calendarTriggerYear = (int)date.year;
-        notificationData.calendarTriggerMonth = (int)date.month;
-        notificationData.calendarTriggerDay = (int)date.day;
-        notificationData.calendarTriggerHour = (int)date.hour;
-        notificationData.calendarTriggerMinute = (int)date.minute;
-        notificationData.calendarTriggerSecond = (int)date.second;
+        notificationData.trigger.calendar.year = (int)date.year;
+        notificationData.trigger.calendar.month = (int)date.month;
+        notificationData.trigger.calendar.day = (int)date.day;
+        notificationData.trigger.calendar.hour = (int)date.hour;
+        notificationData.trigger.calendar.minute = (int)date.minute;
+        notificationData.trigger.calendar.second = (int)date.second;
     }
     else if ([request.trigger isKindOfClass: [UNLocationNotificationTrigger class]])
     {
@@ -150,19 +160,22 @@ iOSNotificationData UNNotificationRequestToiOSNotificationData(UNNotificationReq
         UNLocationNotificationTrigger* locationTrigger = (UNLocationNotificationTrigger*)request.trigger;
         CLCircularRegion *region = (CLCircularRegion*)locationTrigger.region;
 
-        notificationData.locationTriggerCenterX = region.center.latitude;
-        notificationData.locationTriggerCenterY = region.center.longitude;
-        notificationData.locationTriggerRadius = region.radius;
-        notificationData.locationTriggerNotifyOnExit = region.notifyOnEntry;
-        notificationData.locationTriggerNotifyOnEntry = region.notifyOnExit;
+        notificationData.trigger.location.centerX = region.center.latitude;
+        notificationData.trigger.location.centerY = region.center.longitude;
+        notificationData.trigger.location.radius = region.radius;
+        notificationData.trigger.location.notifyOnExit = region.notifyOnEntry;
+        notificationData.trigger.location.notifyOnEntry = region.notifyOnExit;
 #endif
     }
     else if ([request.trigger isKindOfClass: [UNPushNotificationTrigger class]])
     {
         notificationData.triggerType = PUSH_TRIGGER;
     }
+    else
+        notificationData.triggerType = UNKNOWN_TRIGGER;
 
     parseCustomizedData(&notificationData, request);
+    notificationData.attachments = (__bridge_retained void*)request.content.attachments;
 
     return notificationData;
 }
@@ -211,26 +224,55 @@ void* _AddItemToNSDictionary(void* dict, const char* key, const char* value)
     return dict;
 }
 
+void* _AddAttachmentToNSArray(void* arr, const char* attId, const char* url, void** outError)
+{
+    *outError = NULL;
+    NSString* attachmentId = nil;
+    if (attId != NULL)
+        attachmentId = [NSString stringWithUTF8String: attId];
+    NSURL* uri = [NSURL URLWithString: [NSString stringWithUTF8String: url]];
+    NSError* error = nil;
+    UNNotificationAttachment* attachment = [UNNotificationAttachment attachmentWithIdentifier: attachmentId URL: uri options: nil error: &error];
+    if (attachment != nil)
+    {
+        NSMutableArray* array;
+        if (arr != NULL)
+            array = (__bridge NSMutableArray*)arr;
+        else
+        {
+            array = [[NSMutableArray alloc] init];
+            arr = (__bridge_retained void*)array;
+        }
+
+        [array addObject: attachment];
+        return arr;
+    }
+
+    if (error != nil)
+        *outError = (__bridge_retained void*)error;
+    return NULL;
+}
+
 void _ReadNSDictionary(void* csDict, void* nsDict, void (*callback)(void* csDcit, const char*, const char*))
 {
     NSDictionary* dict = (__bridge NSDictionary*)nsDict;
     [dict enumerateKeysAndObjectsUsingBlock:^(id  _Nonnull key, id  _Nonnull obj, BOOL * _Nonnull stop) {
         NSString* k = key;
-        if ([obj isKindOfClass: [NSString class]])
-        {
-            NSString* v = obj;
+        NSString* v = ParseNotificationDataObject(obj);
+        if (v != nil)
             callback(csDict, k.UTF8String, v.UTF8String);
-        }
         else
-        {
-            NSError* error;
-            NSData* data = [NSJSONSerialization dataWithJSONObject: obj options: NSJSONWritingPrettyPrinted error: &error];
-            if (data)
-            {
-                NSString* v = [[NSString alloc] initWithData: data encoding: NSUTF8StringEncoding];
-                callback(csDict, k.UTF8String, v.UTF8String);
-            }
-        }
+            NSLog(@"Failed to parse value for key '%@'", key);
+    }];
+}
+
+void _ReadAttachmentsNSArray(void* csList, void* nsArray, void (*callback)(void*, const char*, const char*))
+{
+    NSArray<UNNotificationAttachment*>* attachments = (__bridge_transfer NSArray<UNNotificationAttachment*>*)nsArray;
+    [attachments enumerateObjectsUsingBlock:^(UNNotificationAttachment * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        NSString* idr = obj.identifier;
+        NSString* url = obj.URL.absoluteString;
+        callback(csList, idr.UTF8String, url.UTF8String);
     }];
 }
 

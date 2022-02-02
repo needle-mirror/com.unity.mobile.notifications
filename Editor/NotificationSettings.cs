@@ -1,5 +1,6 @@
 using Unity.Notifications.iOS;
 using UnityEditor;
+using UnityEngine;
 
 namespace Unity.Notifications
 {
@@ -92,6 +93,61 @@ namespace Unity.Notifications
                     SetSettingValue<string>(BuildTargetGroup.Android, "UnityNotificationAndroidCustomActivityString", value);
                 }
             }
+
+            /// <summary>
+            /// Add image to notification settings.
+            /// </summary>
+            /// <param name="id">Image identifier</param>
+            /// <param name="image">Image texture, must be obtained from asset database</param>
+            /// <param name="type">Image type</param>
+            public static void AddDrawableResource(string id, Texture2D image, NotificationIconType type)
+            {
+                var manager = NotificationSettingsManager.Initialize();
+                manager.AddDrawableResource(id, image, type);
+#if UNITY_2020_2_OR_NEWER
+                SettingsService.RepaintAllSettingsWindow();
+#endif
+            }
+
+            /// <summary>
+            /// Remove icon at given index from notification settings.
+            /// </summary>
+            /// <param name="index">Index of image to remove</param>
+            public static void RemoveDrawableResource(int index)
+            {
+                var manager = NotificationSettingsManager.Initialize();
+                manager.RemoveDrawableResourceByIndex(index);
+#if UNITY_2020_2_OR_NEWER
+                SettingsService.RepaintAllSettingsWindow();
+#endif
+            }
+
+            /// <summary>
+            /// Remove icon with given identifier from notification settings.
+            /// </summary>
+            /// <param name="id">ID of the image to remove</param>
+            public static void RemoveDrawableResource(string id)
+            {
+                var manager = NotificationSettingsManager.Initialize();
+                manager.RemoveDrawableResourceById(id);
+#if UNITY_2020_2_OR_NEWER
+                SettingsService.RepaintAllSettingsWindow();
+#endif
+            }
+
+            /// <summary>
+            /// Remove all images from notification settings.
+            /// </summary>
+            public static void ClearDrawableResources()
+            {
+                var manager = NotificationSettingsManager.Initialize();
+                manager.ClearDrawableResources();
+#if UNITY_2020_2_OR_NEWER
+                SettingsService.RepaintAllSettingsWindow();
+#endif
+            }
+
+
         }
 
         /// <summary>
@@ -117,15 +173,15 @@ namespace Unity.Notifications
             /// <summary>
             /// Configure the notification interaction types your app will include in the authorisation request if RequestAuthorizationOnAppLaunch is enabled. Alternatively you can specify them when creating a `AuthorizationRequest` from a script.
             /// </summary>
-            public static PresentationOption DefaultAuthorizationOptions
+            public static AuthorizationOption DefaultAuthorizationOptions
             {
                 get
                 {
-                    return GetSettingValue<PresentationOption>(BuildTargetGroup.iOS, "UnityNotificationDefaultAuthorizationOptions");
+                    return GetSettingValue<AuthorizationOption>(BuildTargetGroup.iOS, "UnityNotificationDefaultAuthorizationOptions");
                 }
                 set
                 {
-                    SetSettingValue<PresentationOption>(BuildTargetGroup.iOS, "UnityNotificationDefaultAuthorizationOptions", value);
+                    SetSettingValue<AuthorizationOption>(BuildTargetGroup.iOS, "UnityNotificationDefaultAuthorizationOptions", value);
                 }
             }
 

@@ -14,6 +14,7 @@ enum triggerType
     CALENDAR_TRIGGER = 10,
     LOCATION_TRIGGER = 20,
     PUSH_TRIGGER = 3,
+    UNKNOWN_TRIGGER = -1,
 };
 
 typedef struct iOSNotificationData
@@ -27,28 +28,38 @@ typedef struct iOSNotificationData
     char* threadIdentifier;
 
     void* userInfo;
+    void* attachments;
 
     // Trigger
     int triggerType;  //0 - time, 1 - calendar, 2 - location, 3 - push.
-    int repeats;
+    union
+    {
+        struct
+        {
+            int interval;
+            unsigned char repeats;
+        } timeInterval;
 
-    //Time trigger
-    int timeTriggerInterval;
+        struct
+        {
+            int year;
+            int month;
+            int day;
+            int hour;
+            int minute;
+            int second;
+            unsigned char repeats;
+        } calendar;
 
-    //Calendar trigger
-    int calendarTriggerYear;
-    int calendarTriggerMonth;
-    int calendarTriggerDay;
-    int calendarTriggerHour;
-    int calendarTriggerMinute;
-    int calendarTriggerSecond;
-
-    //Location trigger
-    float locationTriggerCenterX;
-    float locationTriggerCenterY;
-    float locationTriggerRadius;
-    int locationTriggerNotifyOnEntry;
-    int locationTriggerNotifyOnExit;
+        struct
+        {
+            float centerX;
+            float centerY;
+            float radius;
+            unsigned char notifyOnEntry;
+            unsigned char notifyOnExit;
+        } location;
+    } trigger;
 } iOSNotificationData;
 
 typedef struct iOSNotificationAuthorizationData
