@@ -149,7 +149,7 @@ class AndroidNotificationSendingTests
         var n = new AndroidNotification();
         n.Title = "Repeating Notification Title";
         n.Text = "Repeating Notification Text";
-        n.FireTime = System.DateTime.Now;
+        n.FireTime = System.DateTime.Now.AddSeconds(2);
         n.RepeatInterval = new System.TimeSpan(0, 0, 5); // interval needs to be quite big for test to be reliable
 
         Debug.LogWarning("ScheduleRepeatableNotification_NotificationsAreReceived sends notification");
@@ -158,8 +158,8 @@ class AndroidNotificationSendingTests
 
         // we use inexact scheduling, so repeated notification may take a while to appear
         // inexact also can group, so for test purposes we only check that it repeats at least once
-        yield return WaitForNotification(8.0f);
-        yield return WaitForNotification(30.0f);
+        yield return WaitForNotification(120.0f);
+        yield return WaitForNotification(120.0f);
         AndroidNotificationCenter.CancelScheduledNotification(originalId);
 
         Debug.LogWarning("ScheduleRepeatableNotification_NotificationsAreReceived completed");
@@ -184,7 +184,8 @@ class AndroidNotificationSendingTests
         var status = AndroidNotificationCenter.CheckScheduledNotificationStatus(originalId);
         Assert.AreEqual(NotificationStatus.Scheduled, status);
 
-        yield return WaitForNotification(8.0f);
+        yield return WaitForNotification(120.0f);
+        yield return new WaitForSeconds(1.0f);  // give some time for Status Bar to update
         status = AndroidNotificationCenter.CheckScheduledNotificationStatus(originalId);
         Assert.AreEqual(NotificationStatus.Delivered, status);
 
@@ -291,5 +292,41 @@ class AndroidNotificationSendingTests
         {
             Assert.AreEqual("TheTest", extras.Call<string>("getString", "notification.test.string"));
         }
+    }
+
+    [UnityTest]
+    [UnityPlatform(RuntimePlatform.Android)]
+    public IEnumerator SendNotification_CanReschedule()
+    {
+        var managerClass = new AndroidJavaClass("com.unity.androidnotifications.UnityNotificationManager");
+        var rebootClass = new AndroidJavaClass("com.unity.androidnotifications.UnityNotificationRestartOnBootReceiver");
+        AndroidJavaObject context;
+        using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+        {
+            using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
+                context = activity.Call<AndroidJavaObject>("getApplicationContext");
+        }
+
+        var n = new AndroidNotification();
+        n.Title = "SendNotification_CanReschedule";
+        n.Text = "SendNotification_CanReschedule Text";
+        n.FireTime = System.DateTime.Now.AddSeconds(5);
+
+        Debug.LogWarning("SendNotification_CanReschedule sends notification");
+
+        int id = AndroidNotificationCenter.SendNotification(n, kDefaultTestChannel);
+        yield return new WaitForSeconds(0.2f);
+
+        // simulate reboot by directly cancelling scheduled alarms preserving saves
+        managerClass.CallStatic("cancelPendingNotificationIntent", context, id);
+        yield return new WaitForSeconds(0.2f);
+        // simulate reboot by calling reschedule method, that is called after reboot
+        rebootClass.CallStatic("rescheduleSavedNotifications", context);
+
+        yield return WaitForNotification(120.0f);
+
+        Debug.LogWarning("SendNotification_CanReschedule completed");
+
+        Assert.AreEqual(1, currentHandler.receivedNotificationCount);
     }
 }

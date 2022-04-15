@@ -1,7 +1,7 @@
 {
   "name": "com.unity.mobile.notifications",
   "displayName": "Mobile Notifications",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "unity": "2019.4",
   "description": "Mobile Notifications package adds support for scheduling local repeatable or one-time notifications on iOS and Android.\n\nRequires iOS 10 and Android 4.4 or above.",
   "keywords": [
@@ -13,13 +13,16 @@
   "dependencies": {
     "com.unity.modules.androidjni": "1.0.0"
   },
+  "upm": {
+    "changelog": "### Fixes:\n- [Android] Change exported attribute to false in the manifest for package receivers.\n- [Android] [issue 144](https://github.com/Unity-Technologies/com.unity.mobile.notifications/issues/144) Fix Transaction.TooLargeException exception on some devices for notifications with large icons or more content.\n- [Android] [issue 160](https://github.com/Unity-Technologies/com.unity.mobile.notifications/issues/160) Fix UnityNotificationRestartOnBootReceiver not setting FLAG_IMMUTABLE.\n\n### Changes & Improvements:\n- [Android] Build will now fail if minimum SDK in Unity is lower than supported by package."
+  },
   "upmCi": {
-    "footprint": "f6afa5d89c1dcf8d1dfd59de254c808d0dcfafbc"
+    "footprint": "7dc5db61db0b334e67af0e7d12ff1df93ce339a4"
   },
   "repository": {
     "url": "https://github.com/Unity-Technologies/com.unity.mobile.notifications.git",
     "type": "git",
-    "revision": "ce9c2a53ee29f96377480d6beac512b9043f6194"
+    "revision": "fe3150a4480280d987cc8e2a37155782d5a75dc4"
   },
   "samples": [
     {

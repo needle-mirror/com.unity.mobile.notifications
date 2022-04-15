@@ -2,6 +2,16 @@
 
 All notable changes to this package will be documented in this file.
 
+## [2.0.1] - 2022-04-15
+
+### Fixes:
+- [Android] Change exported attribute to false in the manifest for package receivers.
+- [Android] [issue 144](https://github.com/Unity-Technologies/com.unity.mobile.notifications/issues/144) Fix Transaction.TooLargeException exception on some devices for notifications with large icons or more content.
+- [Android] [issue 160](https://github.com/Unity-Technologies/com.unity.mobile.notifications/issues/160) Fix UnityNotificationRestartOnBootReceiver not setting FLAG_IMMUTABLE.
+
+### Changes & Improvements:
+- [Android] Build will now fail if minimum SDK in Unity is lower than supported by package.
+
 ## [2.0.0] - 2022-02-02
 
 ### Fixes:
@@ -20,6 +30,8 @@ All notable changes to this package will be documented in this file.
 - [Android] Added API which allows you to change notification icons in Editor.
 - [iOS] Correctly handle boolean values in UserInfo, previously boolean values were detected as numbers and get parsed as 1 or 0, now they will be correctly handled as 'true' and 'false'
 - [Android] Fixed notification package for Android 12 - NotificationRestartOnBootReceiver needs to be marked as exported in manifest file, disable exact alarms because they require special permissions.
+- [iOS] Fix NotificationSettings.iOSSettings.DefaultAuthorizationOptions having incorrect return type (was PresentationOption, now AuthorizationOption).
+- [iOS] Mobile Notifications 2.0.0: iOSNotificationTrigger.Type is no longer static and returns iOSNotificationTriggerType instead of int.
 
 ## [1.4.2] - 2021-07-22
 
