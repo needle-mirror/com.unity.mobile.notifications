@@ -78,6 +78,9 @@ void initiOSNotificationData(iOSNotificationData* notificationData)
     notificationData->subtitle = NULL;
     notificationData->categoryIdentifier = NULL;
     notificationData->threadIdentifier = NULL;
+    notificationData->soundType = kSoundTypeDefault;
+    notificationData->soundVolume = -1.0f;
+    notificationData->soundName = NULL;
     notificationData->triggerType = PUSH_TRIGGER;
     notificationData->userInfo = NULL;
 }
@@ -151,6 +154,7 @@ iOSNotificationData UNNotificationRequestToiOSNotificationData(UNNotificationReq
         notificationData.trigger.calendar.hour = (int)date.hour;
         notificationData.trigger.calendar.minute = (int)date.minute;
         notificationData.trigger.calendar.second = (int)date.second;
+        notificationData.trigger.calendar.repeats = (int)calendarTrigger.repeats;
     }
     else if ([request.trigger isKindOfClass: [UNLocationNotificationTrigger class]])
     {
@@ -160,11 +164,12 @@ iOSNotificationData UNNotificationRequestToiOSNotificationData(UNNotificationReq
         UNLocationNotificationTrigger* locationTrigger = (UNLocationNotificationTrigger*)request.trigger;
         CLCircularRegion *region = (CLCircularRegion*)locationTrigger.region;
 
-        notificationData.trigger.location.centerX = region.center.latitude;
-        notificationData.trigger.location.centerY = region.center.longitude;
+        notificationData.trigger.location.latitude = region.center.latitude;
+        notificationData.trigger.location.longitude = region.center.longitude;
         notificationData.trigger.location.radius = region.radius;
         notificationData.trigger.location.notifyOnExit = region.notifyOnEntry;
         notificationData.trigger.location.notifyOnEntry = region.notifyOnExit;
+        notificationData.trigger.location.repeats = locationTrigger.repeats;
 #endif
     }
     else if ([request.trigger isKindOfClass: [UNPushNotificationTrigger class]])
@@ -199,6 +204,9 @@ void freeiOSNotificationData(iOSNotificationData* notificationData)
 
     if (notificationData->threadIdentifier != NULL)
         free(notificationData->threadIdentifier);
+
+    if (notificationData->soundName != NULL)
+        free(notificationData->soundName);
 
     if (notificationData->userInfo != NULL)
     {

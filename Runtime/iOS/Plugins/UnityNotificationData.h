@@ -17,6 +17,14 @@ enum triggerType
     UNKNOWN_TRIGGER = -1,
 };
 
+enum UnitySoundType
+{
+    kSoundTypeDefault = 0,
+    kSoundTypeCritical = 1,
+    kSoundTypeRingtone = 2,
+    kSoundTypeNone = 4,
+};
+
 typedef struct iOSNotificationData
 {
     char* identifier;
@@ -26,6 +34,9 @@ typedef struct iOSNotificationData
     char* subtitle;
     char* categoryIdentifier;
     char* threadIdentifier;
+    int soundType;
+    float soundVolume;
+    char* soundName;
 
     void* userInfo;
     void* attachments;
@@ -53,11 +64,12 @@ typedef struct iOSNotificationData
 
         struct
         {
-            float centerX;
-            float centerY;
+            double latitude;
+            double longitude;
             float radius;
             unsigned char notifyOnEntry;
             unsigned char notifyOnExit;
+            unsigned char repeats;
         } location;
     } trigger;
 } iOSNotificationData;

@@ -123,7 +123,8 @@ In the example below, the center coordinate is defined using the WGS 84 system. 
 ```c#
 var locationTrigger = new iOSNotificationLocationTrigger()
 {
-    Center = new Vector2(2.294498f, 48.858263f),
+    Latitude = 48.858263,
+    Longitude = 2.294498,
     Radius = 250f,
     NotifyOnEntry = true,
     NotifyOnExit = false,
@@ -225,3 +226,9 @@ Sometimes, you might want to set custom data on the payload for a remote notific
 ```
 
 You have to use the exact `data` as the key of your custom data, because this is what the package looks for.
+
+#### Images, videos and sounds
+
+By default notifications use the default system sound. Sound can be disabled by changing the [iOSNotificationCenter.SoundType](../api/Unity.Notifications.iOS.iOSNotification.html#Unity_Notifications_iOS_iOSNotification_SoundType). A custom sound can be used by using Default sound type and assigning sound file name to [iOSNotificationCenter.SoundName](../api/Unity.Notifications.iOS.iOSNotification.html#Unity_Notifications_iOS_iOSNotification_SoundName). The sound file itself has to be manually added to XCode project. For more information regarding file placement and supported formats, see [Apple documentation](https://developer.apple.com/documentation/usernotifications/unnotificationsound?language=objc).
+
+Images or video can added to notifications by using [attachments](../api/Unity.Notifications.iOS.iOSNotificationAttachment.html).

@@ -32,6 +32,34 @@ namespace Unity.Notifications.iOS
         Alert = 1 << 2,
     }
 
+    /// <summary>
+    /// The type of sound to use for the notification.
+    /// See Apple documentation for details.
+    /// </summary>
+    /// <see href="https://developer.apple.com/documentation/usernotifications/unnotificationsound?language=objc"/>
+    public enum NotificationSoundType
+    {
+        /// <summary>
+        /// Play the default sound.
+        /// </summary>
+        Default = 0,
+
+        /// <summary>
+        /// Critical sound (bypass Do Not Disturb)
+        /// </summary>
+        Critical = 1,
+
+        /// <summary>
+        /// Ringtone sound.
+        /// </summary>
+        Ringtone = 2,
+
+        /// <summary>
+        /// No sound.
+        /// </summary>
+        None = 4,
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     internal struct TimeTriggerData
     {
@@ -54,11 +82,12 @@ namespace Unity.Notifications.iOS
     [StructLayout(LayoutKind.Sequential)]
     internal struct LocationTriggerData
     {
-        public float centerX;
-        public float centerY;
+        public double latitude;
+        public double longitude;
         public float radius;
         public Byte notifyOnEntry;
         public Byte notifyOnExit;
+        public Byte repeats;
     }
 
     [StructLayout(LayoutKind.Explicit)]
@@ -82,6 +111,9 @@ namespace Unity.Notifications.iOS
         public string subtitle;
         public string categoryIdentifier;
         public string threadIdentifier;
+        public Int32 soundType;
+        public float soundVolume;
+        public string soundName;
 
         public IntPtr userInfo;
         public IntPtr attachments;
@@ -214,6 +246,32 @@ namespace Unity.Notifications.iOS
         }
 
         /// <summary>
+        /// The type of sound to be played.
+        /// </summary>
+        public NotificationSoundType SoundType
+        {
+            get { return (NotificationSoundType)data.soundType; }
+            set { data.soundType = (int)value; }
+        }
+
+        /// <summary>
+        /// The name of the sound to be played. Use null for system default sound.
+        /// See Apple documentation for named sounds and sound file placement.
+        /// </summary>
+        public string SoundName
+        {
+            get { return data.soundName; }
+            set { data.soundName = value; }
+        }
+
+        /// <summary>
+        /// The volume for the sound. Use null to use the default volume.
+        /// See Apple documentation for supported values.
+        /// </summary>
+        /// <see href="https://developer.apple.com/documentation/usernotifications/unnotificationsound/2963118-defaultcriticalsoundwithaudiovol?language=objc"/>
+        public float? SoundVolume { get; set; }
+
+        /// <summary>
         /// Arbitrary string data which can be retrieved when the notification is used to open the app or is received while the app is running.
         /// </summary>
         public string Data
@@ -273,7 +331,12 @@ namespace Unity.Notifications.iOS
                         }
                     case iOSNotificationTriggerType.Calendar:
                         {
-                            var trigger = ((iOSNotificationCalendarTrigger)value).ToUtc();
+                            var trigger = ((iOSNotificationCalendarTrigger)value);
+                            if (userInfo == null)
+                                userInfo = new Dictionary<string, string>();
+                            userInfo["OriginalUtc"] = trigger.UtcTime ? "1" : "0";
+                            if (!trigger.UtcTime)
+                                trigger = trigger.ToUtc();
                             data.trigger.calendar.year = trigger.Year != null ? trigger.Year.Value : -1;
                             data.trigger.calendar.month = trigger.Month != null ? trigger.Month.Value : -1;
                             data.trigger.calendar.day = trigger.Day != null ? trigger.Day.Value : -1;
@@ -286,11 +349,12 @@ namespace Unity.Notifications.iOS
                     case iOSNotificationTriggerType.Location:
                         {
                             var trigger = (iOSNotificationLocationTrigger)value;
-                            data.trigger.location.centerX = trigger.Center.x;
-                            data.trigger.location.centerY = trigger.Center.y;
+                            data.trigger.location.latitude = trigger.Latitude;
+                            data.trigger.location.longitude = trigger.Longitude;
                             data.trigger.location.notifyOnEntry = (byte)(trigger.NotifyOnEntry ? 1 : 0);
                             data.trigger.location.notifyOnExit = (byte)(trigger.NotifyOnExit ? 1 : 0);
                             data.trigger.location.radius = trigger.Radius;
+                            data.trigger.location.repeats = (byte)(trigger.Repeats ? 1 : 0);
                             break;
                         }
                     case iOSNotificationTriggerType.Push:
@@ -313,24 +377,31 @@ namespace Unity.Notifications.iOS
                             Repeats = data.trigger.timeInterval.repeats != 0,
                         };
                     case iOSNotificationTriggerType.Calendar:
-                        return new iOSNotificationCalendarTrigger()
                         {
-                            Year = (data.trigger.calendar.year > 0) ? (int?)data.trigger.calendar.year : null,
-                            Month = (data.trigger.calendar.month > 0) ? (int?)data.trigger.calendar.month : null,
-                            Day = (data.trigger.calendar.day > 0) ? (int?)data.trigger.calendar.day : null,
-                            Hour = (data.trigger.calendar.hour >= 0) ? (int?)data.trigger.calendar.hour : null,
-                            Minute = (data.trigger.calendar.minute >= 0) ? (int?)data.trigger.calendar.minute : null,
-                            Second = (data.trigger.calendar.second >= 0) ? (int?)data.trigger.calendar.second : null,
-                            UtcTime = true,
-                            Repeats = data.trigger.calendar.repeats != 0
-                        };
+                            var trigger = new iOSNotificationCalendarTrigger()
+                            {
+                                Year = (data.trigger.calendar.year > 0) ? (int?)data.trigger.calendar.year : null,
+                                Month = (data.trigger.calendar.month > 0) ? (int?)data.trigger.calendar.month : null,
+                                Day = (data.trigger.calendar.day > 0) ? (int?)data.trigger.calendar.day : null,
+                                Hour = (data.trigger.calendar.hour >= 0) ? (int?)data.trigger.calendar.hour : null,
+                                Minute = (data.trigger.calendar.minute >= 0) ? (int?)data.trigger.calendar.minute : null,
+                                Second = (data.trigger.calendar.second >= 0) ? (int?)data.trigger.calendar.second : null,
+                                UtcTime = true,
+                                Repeats = data.trigger.calendar.repeats != 0
+                            };
+                            if (userInfo != null && userInfo["OriginalUtc"] == "0")
+                                trigger = trigger.ToLocal();
+                            return trigger;
+                        }
                     case iOSNotificationTriggerType.Location:
                         return new iOSNotificationLocationTrigger()
                         {
-                            Center = new Vector2(data.trigger.location.centerX, data.trigger.location.centerY),
+                            Latitude = data.trigger.location.latitude,
+                            Longitude = data.trigger.location.longitude,
                             Radius = data.trigger.location.radius,
                             NotifyOnEntry = data.trigger.location.notifyOnEntry != 0,
-                            NotifyOnExit = data.trigger.location.notifyOnExit != 0
+                            NotifyOnExit = data.trigger.location.notifyOnExit != 0,
+                            Repeats = data.trigger.location.repeats != 0,
                         };
                     case iOSNotificationTriggerType.Push:
                         return new iOSNotificationPushTrigger();
@@ -390,6 +461,11 @@ namespace Unity.Notifications.iOS
         {
             if (data.identifier == null)
                 data.identifier = GenerateUniqueID();
+            if (SoundVolume.HasValue)
+                data.soundVolume = SoundVolume.Value;
+            else
+                data.soundVolume = -1.0f;
+
             iOSNotificationWithUserInfo ret;
             ret.data = data;
             ret.userInfo = userInfo;

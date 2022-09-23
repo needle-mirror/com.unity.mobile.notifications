@@ -1,9 +1,9 @@
 {
   "name": "com.unity.mobile.notifications",
   "displayName": "Mobile Notifications",
-  "version": "2.0.2",
-  "unity": "2019.4",
-  "description": "Mobile Notifications package adds support for scheduling local repeatable or one-time notifications on iOS and Android.\n\nRequires iOS 10 and Android 5.1 or above.",
+  "version": "2.1.0",
+  "unity": "2020.3",
+  "description": "Mobile Notifications package adds support for scheduling local repeatable or one-time notifications on iOS and Android.\n\nOn iOS receiving of push notifications is also supported.",
   "keywords": [
     "Android",
     "iOS",
@@ -13,16 +13,13 @@
   "dependencies": {
     "com.unity.modules.androidjni": "1.0.0"
   },
-  "_upm": {
-    "changelog": "### Changes & Improvements:\n- [Android] - AndroidNotificationCenter.CheckScheduledNotificationStatus now works on devices with all API levels\n\n### Fixes:\n- [Android] [issue 186](https://github.com/Unity-Technologies/com.unity.mobile.notifications/issues/186) Mitigate OutOfMemory errors causing application crash\n- [Android] [issue 188](https://github.com/Unity-Technologies/com.unity.mobile.notifications/issues/188) Fix unguarded API usage from level 23"
-  },
   "upmCi": {
-    "footprint": "fcbc06e3f43c167786fa053033b9a0794b3dfa2c"
+    "footprint": "9fc147f0e192d2d5d55916207c043c6833408180"
   },
   "repository": {
     "url": "https://github.com/Unity-Technologies/com.unity.mobile.notifications.git",
     "type": "git",
-    "revision": "2653cecf26a3357212ae190bb3700610b905dc82"
+    "revision": "fe78b8f251882ac58109ed3c3b256953814a3dc7"
   },
   "samples": [
     {

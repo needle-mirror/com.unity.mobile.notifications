@@ -182,10 +182,13 @@ class iOSNotificationTests
 
         iOSNotificationCenter.ScheduleNotification(notification);
         Debug.Log($"SendNotificationUsingCalendarTrigger_NotificationIsReceived, Now: {dateTime}, Notification should arrive on: {dt}");
-        yield return WaitForNotification(10.0f);
+        yield return WaitForNotification(20.0f);
+        Debug.Log($"SendNotificationUsingCalendarTrigger_NotificationIsReceived, wait finished at: {DateTime.Now}");
         Assert.AreEqual(1, receivedNotificationCount);
         Assert.IsNotNull(lastReceivedNotification);
         Assert.AreEqual(text, lastReceivedNotification.Title);
+        var retTrigger = (iOSNotificationCalendarTrigger)lastReceivedNotification.Trigger;
+        Assert.AreEqual(useUtc, retTrigger.UtcTime);
     }
 
     [UnityTest]
@@ -313,7 +316,7 @@ class iOSNotificationTests
     }
 
     [Test]
-    public void OSNotificationCalendarTrigger_AssignNonEmptyComponents_Works()
+    public void iOSNotificationCalendarTrigger_AssignNonEmptyComponents_Works()
     {
         var dt = new DateTime(2025, 1, 2, 3, 4, 5);
 
@@ -346,5 +349,43 @@ class iOSNotificationTests
         Assert.AreEqual(3, trigger.Hour);
         Assert.AreEqual(4, trigger.Minute);
         Assert.AreEqual(5, trigger.Second);
+    }
+
+    [Test]
+    public void iOSNotification_CalendarTrigger_ReturnsSameKindDateTime()
+    {
+        var trigger1 = new iOSNotificationCalendarTrigger()
+        {
+            Hour = 8,
+            Minute = 30,
+            UtcTime = false,
+        };
+
+        var trigger2 = new iOSNotificationCalendarTrigger()
+        {
+            Hour = 8,
+            Minute = 30,
+            UtcTime = false,
+        };
+
+        var notification = new iOSNotification()
+        {
+            Title = "text",
+            Body = "text",
+            Trigger = trigger1,
+        };
+
+        var retTrigger = (iOSNotificationCalendarTrigger)notification.Trigger;
+
+        Assert.AreEqual(trigger1.Hour, retTrigger.Hour);
+        Assert.AreEqual(trigger1.Minute, retTrigger.Minute);
+        Assert.AreEqual(trigger1.UtcTime, retTrigger.UtcTime);
+
+        notification.Trigger = trigger2;
+        retTrigger = (iOSNotificationCalendarTrigger)notification.Trigger;
+
+        Assert.AreEqual(trigger2.Hour, retTrigger.Hour);
+        Assert.AreEqual(trigger2.Minute, retTrigger.Minute);
+        Assert.AreEqual(trigger2.UtcTime, retTrigger.UtcTime);
     }
 }
