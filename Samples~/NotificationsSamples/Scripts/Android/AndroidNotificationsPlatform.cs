@@ -1,6 +1,9 @@
 #if UNITY_ANDROID
 using System;
+using System.Collections;
 using Unity.Notifications.Android;
+using UnityEngine;
+using UnityEngine.Android;
 
 namespace NotificationSamples.Android
 {
@@ -25,6 +28,38 @@ namespace NotificationSamples.Android
         public AndroidNotificationsPlatform()
         {
             AndroidNotificationCenter.OnNotificationReceived += OnLocalNotificationReceived;
+        }
+
+        public IEnumerator RequestNotificationPermission()
+        {
+            const string notificationPermission = "android.permission.POST_NOTIFICATIONS";
+            const int permissionRequiredSDK = 33;
+
+            using (var version = new AndroidJavaClass("android/os/Build$VERSION"))
+            {
+                var deviceSdk = version.GetStatic<int>("SDK_INT");
+                if (deviceSdk < permissionRequiredSDK)
+                    yield break;
+            }
+
+            if (Permission.HasUserAuthorizedPermission(notificationPermission))
+                yield break;
+
+            using (var playerClass = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+            {
+                using (var activity = playerClass.GetStatic<AndroidJavaObject>("currentActivity"))
+                {
+                    using (var appInfo = activity.Call<AndroidJavaObject>("getApplicationInfo"))
+                    {
+                        var targetSdk = appInfo.Get<int>("targetSdkVersion");
+                        if (targetSdk < permissionRequiredSDK)
+                            yield break;
+                    }
+                }
+            }
+
+            Permission.RequestUserPermission(notificationPermission);
+            yield return null;
         }
 
         /// <inheritdoc />
