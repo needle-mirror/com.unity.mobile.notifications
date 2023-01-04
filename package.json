@@ -1,7 +1,7 @@
 {
   "name": "com.unity.mobile.notifications",
   "displayName": "Mobile Notifications",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "unity": "2020.3",
   "description": "Mobile Notifications package adds support for scheduling local repeatable or one-time notifications on iOS and Android.\n\nOn iOS receiving of push notifications is also supported.",
   "keywords": [
@@ -13,13 +13,17 @@
   "dependencies": {
     "com.unity.modules.androidjni": "1.0.0"
   },
-  "upmCi": {
-    "footprint": "9fc147f0e192d2d5d55916207c043c6833408180"
+  "_upm": {
+    "changelog": "### Fixes:\n- [Android] - No longer use DeniedAndDontAskAgain permission response, only Denied.\n- [iOS] - [issue 205](https://github.com/Unity-Technologies/com.unity.mobile.notifications/issues/205) Fix occasional crash when registering for push notifications.\n- [iOS] - [issue 242](https://github.com/Unity-Technologies/com.unity.mobile.notifications/issues/242) Fix exception when OriginalUtc key is missing in data (for example notification was scheduled using older package version)."
   },
+  "upmCi": {
+    "footprint": "3a7332c93e786856d3e841c78dbfa9213bcc7e90"
+  },
+  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.mobile.notifications@2.1/manual/index.html",
   "repository": {
     "url": "https://github.com/Unity-Technologies/com.unity.mobile.notifications.git",
     "type": "git",
-    "revision": "fe78b8f251882ac58109ed3c3b256953814a3dc7"
+    "revision": "a1a83ad38b494a575a9c7c8aa064766d01c41cae"
   },
   "samples": [
     {
