@@ -393,4 +393,58 @@ class AndroidNotificationSendingTests
         var status = AndroidNotificationCenter.CheckScheduledNotificationStatus(originalId);
         Assert.AreEqual(NotificationStatus.Unknown, status);  // status should be unknown, rather than Delivered
     }
+
+    [UnityTest]
+    [UnityPlatform(RuntimePlatform.Android)]
+    public IEnumerator SendBigPictureNotification_Roundtrip()
+    {
+        var n = new AndroidNotification("SendBigPictureNotification_Roundtrip", "SendBigPictureNotification_Roundtrip text", DateTime.Now);
+        n.BigPicture = new BigPictureStyle()
+        {
+            LargeIcon = "icon_1",
+            Picture = "icon_0",
+            ContentTitle = "ContentTitle",
+            ContentDescription = "ContentDescription",
+            SummaryText = "summary",
+            ShowWhenCollapsed = true,
+        };
+
+        Debug.LogWarning("SendBigPictureNotification_Roundtrip send");
+
+        int id = AndroidNotificationCenter.SendNotification(n, kDefaultTestChannel);
+        yield return WaitForNotification(8.0f);
+
+        Assert.AreEqual(1, currentHandler.receivedNotificationCount);
+        var received = currentHandler.lastNotification.Notification;
+        Assert.AreEqual("SendBigPictureNotification_Roundtrip", received.Title);
+        Assert.AreEqual("SendBigPictureNotification_Roundtrip text", received.Text);
+        Assert.AreEqual(NotificationStyle.BigPictureStyle, received.Style);
+        var bigPicture = received.BigPicture;
+        Assert.IsTrue(bigPicture.HasValue);
+        var bigPictureData = bigPicture.Value;
+        Assert.AreEqual("icon_1", bigPictureData.LargeIcon);
+        Assert.AreEqual("icon_0", bigPictureData.Picture);
+        Assert.AreEqual("ContentTitle", bigPictureData.ContentTitle);
+        Assert.AreEqual("ContentDescription", bigPictureData.ContentDescription);
+        Assert.AreEqual("summary", bigPictureData.SummaryText);
+        Assert.IsTrue(bigPictureData.ShowWhenCollapsed);
+    }
+
+    [UnityTest]
+    [UnityPlatform(RuntimePlatform.Android)]
+    public IEnumerator SendAndReplaceNotification()
+    {
+        var original = new AndroidNotification("NotificationToBeReplaced", "This should be replaced", DateTime.Now.AddSeconds(5));
+        int id = AndroidNotificationCenter.SendNotification(original, kDefaultTestChannel);
+        yield return new WaitForSeconds(1);
+
+        var replacement = new AndroidNotification("ReplacementNotification", "Replacement text", DateTime.Now.AddSeconds(3));
+        AndroidNotificationCenter.UpdateScheduledNotification(id, replacement, kDefaultTestChannel);
+        yield return WaitForNotification(8.0f);
+
+        Assert.AreEqual(1, currentHandler.receivedNotificationCount);
+        var received = currentHandler.lastNotification.Notification;
+        Assert.AreEqual(replacement.Title, received.Title);
+        Assert.AreEqual(replacement.Text, received.Text);
+    }
 }

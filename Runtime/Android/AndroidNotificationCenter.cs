@@ -53,6 +53,14 @@ namespace Unity.Notifications.Android
         public AndroidJavaObject KEY_NOTIFICATION;
         public AndroidJavaObject KEY_SMALL_ICON;
         public AndroidJavaObject KEY_SHOW_IN_FOREGROUND;
+        public AndroidJavaObject KEY_BIG_PICTURE;
+
+        // these are lesser used, don't waste java global refs on them
+        public string KEY_BIG_LARGE_ICON;
+        public string KEY_BIG_CONTENT_TITLE;
+        public string KEY_BIG_SUMMARY_TEXT;
+        public string KEY_BIG_CONTENT_DESCRIPTION;
+        public string KEY_BIG_SHOW_WHEN_COLLAPSED;
 
         private JniMethodID getNotificationFromIntent;
         private JniMethodID setNotificationIcon;
@@ -91,6 +99,12 @@ namespace Unity.Notifications.Android
             KEY_NOTIFICATION = clazz.GetStatic<AndroidJavaObject>("KEY_NOTIFICATION");
             KEY_SMALL_ICON = clazz.GetStatic<AndroidJavaObject>("KEY_SMALL_ICON");
             KEY_SHOW_IN_FOREGROUND = clazz.GetStatic<AndroidJavaObject>("KEY_SHOW_IN_FOREGROUND");
+            KEY_BIG_PICTURE = clazz.GetStatic<AndroidJavaObject>("KEY_BIG_PICTURE");
+            KEY_BIG_LARGE_ICON = clazz.GetStatic<string>("KEY_BIG_LARGE_ICON");
+            KEY_BIG_CONTENT_TITLE = clazz.GetStatic<string>("KEY_BIG_CONTENT_TITLE");
+            KEY_BIG_SUMMARY_TEXT = clazz.GetStatic<string>("KEY_BIG_SUMMARY_TEXT");
+            KEY_BIG_CONTENT_DESCRIPTION = clazz.GetStatic<string>("KEY_BIG_CONTENT_DESCRIPTION");
+            KEY_BIG_SHOW_WHEN_COLLAPSED = clazz.GetStatic<string>("KEY_BIG_SHOW_WHEN_COLLAPSED");
 
             CollectMethods(clazz);
 #else
@@ -102,6 +116,12 @@ namespace Unity.Notifications.Android
             KEY_NOTIFICATION = null;
             KEY_SMALL_ICON = null;
             KEY_SHOW_IN_FOREGROUND = null;
+            KEY_BIG_PICTURE = null;
+            KEY_BIG_LARGE_ICON = null;
+            KEY_BIG_CONTENT_TITLE = null;
+            KEY_BIG_SUMMARY_TEXT = null;
+            KEY_BIG_CONTENT_DESCRIPTION = null;
+            KEY_BIG_SHOW_WHEN_COLLAPSED = null;
 #endif
         }
 
@@ -170,6 +190,11 @@ namespace Unity.Notifications.Android
             return klass.CallStatic<string>(getNotificationChannelId, notification);
         }
 
+        public void RegisterNotificationChannelGroup(AndroidNotificationChannelGroup group)
+        {
+            self.Call("registerNotificationChannelGroup", group.Id, group.Name, group.Description);
+        }
+
         public void RegisterNotificationChannel(AndroidNotificationChannel channel)
         {
             self.Call("registerNotificationChannel",
@@ -182,13 +207,19 @@ namespace Unity.Notifications.Android
                 channel.CanBypassDnd,
                 channel.CanShowBadge,
                 channel.VibrationPattern,
-                (int)channel.LockScreenVisibility
+                (int)channel.LockScreenVisibility,
+                channel.Group
             );
         }
 
         public AndroidJavaObject[] GetNotificationChannels()
         {
             return self.Call<AndroidJavaObject[]>("getNotificationChannels");
+        }
+
+        public void DeleteNotificationChannelGroup(string id)
+        {
+            self.Call("deleteNotificationChannelGroup", id);
         }
 
         public void DeleteNotificationChannel(string channelId)
@@ -239,6 +270,29 @@ namespace Unity.Notifications.Android
         public AndroidJavaObject CreateNotificationBuilder(String channelId)
         {
             return self.Call<AndroidJavaObject>(createNotificationBuilder, channelId);
+        }
+
+        public void SetupBigPictureStyle(AndroidJavaObject builder, BigPictureStyle bigPicture)
+        {
+            self.Call("setupBigPictureStyle",
+                builder,
+                bigPicture.LargeIcon,
+                bigPicture.Picture,
+                bigPicture.ContentTitle,
+                bigPicture.ContentDescription,
+                bigPicture.SummaryText,
+                bigPicture.ShowWhenCollapsed
+            );
+        }
+
+        public bool CanScheduleExactAlarms()
+        {
+            return self.Call<bool>("canScheduleExactAlarms");
+        }
+
+        public PermissionStatus AreNotificationsEnabled()
+        {
+            return (PermissionStatus)self.Call<int>("areNotificationsEnabled");
         }
     }
 
@@ -452,6 +506,11 @@ namespace Unity.Notifications.Android
             return bundle.Call<bool>(getBoolean, key, defaultValue);
         }
 
+        public bool GetBoolean(AndroidJavaObject bundle, string key, bool defaultValue)
+        {
+            return bundle.Call<bool>(getBoolean, key, defaultValue);
+        }
+
         public int GetInt(AndroidJavaObject bundle, AndroidJavaObject key, int defaultValue)
         {
             return bundle.Call<int>(getInt, key, defaultValue);
@@ -463,6 +522,11 @@ namespace Unity.Notifications.Android
         }
 
         public string GetString(AndroidJavaObject bundle, AndroidJavaObject key)
+        {
+            return bundle.Call<string>(getString, key);
+        }
+
+        public string GetString(AndroidJavaObject bundle, string key)
         {
             return bundle.Call<string>(getString, key);
         }
@@ -536,13 +600,14 @@ namespace Unity.Notifications.Android
     /// </summary>
     public class AndroidNotificationCenter
     {
+        private static int API_NOTIFICATIONS_CAN_BE_BLOCKED = 24;
         private static int API_POST_NOTIFICATIONS_PERMISSION_REQUIRED = 33;
         internal static string PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS";
 
         /// <summary>
         /// A PlayerPrefs key used to save users reply to POST_NOTIFICATIONS request (integer value of the PermissionStatus).
+        /// Value is one of <see cref="PermissionStatus"/>
         /// </summary>
-        /// <see cref="PermissionStatus"/>
         public static string SETTING_POST_NOTIFICATIONS_PERMISSION = "com.unity.androidnotifications.PostNotificationsPermission";
 
         /// <summary>
@@ -603,7 +668,7 @@ namespace Unity.Notifications.Android
 
         /// <summary>
         /// Has user given permission to post notifications.
-        /// Before Android 13 (API 33) no permission is required.
+        /// Before Android 13 (API 33) no permission is required, but user can disable notifications in the Settings since Android 7 (API 24).
         /// </summary>
         public static PermissionStatus UserPermissionToPost
         {
@@ -611,17 +676,20 @@ namespace Unity.Notifications.Android
             {
                 if (!Initialize())
                     return PermissionStatus.Denied;
-                if (s_DeviceApiLevel < API_POST_NOTIFICATIONS_PERMISSION_REQUIRED)
+                if (s_DeviceApiLevel < API_NOTIFICATIONS_CAN_BE_BLOCKED)
                     return PermissionStatus.Allowed;
 
                 var permissionStatus = (PermissionStatus)PlayerPrefs.GetInt(SETTING_POST_NOTIFICATIONS_PERMISSION, (int)PermissionStatus.NotRequested);
-                var allowed = Permission.HasUserAuthorizedPermission(PERMISSION_POST_NOTIFICATIONS);
-                if (allowed)
+                var enableStatus = s_Jni.NotificationManager.AreNotificationsEnabled();
+                if (enableStatus == PermissionStatus.Allowed)
                 {
-                    if (permissionStatus != PermissionStatus.Allowed)
+                    // only save to settings on devices where runtime permission exists
+                    if (s_DeviceApiLevel >= API_POST_NOTIFICATIONS_PERMISSION_REQUIRED && permissionStatus != PermissionStatus.Allowed)
                         SetPostPermissionSetting(PermissionStatus.Allowed);
                     return PermissionStatus.Allowed;
                 }
+                else if (enableStatus == PermissionStatus.NotificationsBlockedForApp)
+                    return enableStatus;
 
                 switch (permissionStatus)
                 {
@@ -638,6 +706,142 @@ namespace Unity.Notifications.Android
 
                 return permissionStatus;
             }
+        }
+
+        internal static bool CanRequestPermissionToPost
+        {
+            get
+            {
+                if (!Initialize())
+                    return false;
+                // on lower target SDK OS asks permission automatically, can't ask manually
+                return s_TargetApiLevel >= API_POST_NOTIFICATIONS_PERMISSION_REQUIRED;
+            }
+        }
+
+        /// <summary>
+        /// Returns true if app should show UI explaining why it need permission to post notifications.
+        /// The UI should be shown before requesting the permission.
+        /// </summary>
+        public static bool ShouldShowPermissionToPostRationale
+        {
+            get
+            {
+                if (!Initialize())
+                    return false;
+
+                if (CanRequestPermissionToPost)
+                {
+#if UNITY_2023_1_OR_NEWER
+                    return Permission.ShouldShowRequestPermissionRationale(PERMISSION_POST_NOTIFICATIONS);
+#else
+                    return s_CurrentActivity.Call<bool>("shouldShowRequestPermissionRationale", PERMISSION_POST_NOTIFICATIONS);
+#endif
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Whether notifications are scheduled at exact times.
+        /// Combines notification settings and actual device settings (since Android 12 exact scheduling is user controllable).
+        /// </summary>
+        /// <seealso cref="AndroidExactSchedulingOption"/>
+        public static bool UsingExactScheduling
+        {
+            get
+            {
+                if (!Initialize())
+                    return false;
+                return s_Jni.NotificationManager.CanScheduleExactAlarms();
+            }
+        }
+
+        /// <summary>
+        /// Request user permission to schedule alarms at exact times.
+        /// Only works on Android 12 and later, older versions can schedule at exact times without requesting it.
+        /// This may cause your app to use more battery.
+        /// App must have SCHEDULE_EXACT_ALARM permission to be able to request this.
+        /// </summary>
+        /// <seealso cref="AndroidExactSchedulingOption"/>
+        public static void RequestExactScheduling()
+        {
+            if (!Initialize())
+                return;
+            if (s_DeviceApiLevel < 31)
+                return;
+
+            StartActionForThisPackage("android.settings.REQUEST_SCHEDULE_EXACT_ALARM");
+        }
+
+        private static void StartActionForThisPackage(string action)
+        {
+            var packageName = s_CurrentActivity.Call<string>("getPackageName");
+            using (var uriClass = new AndroidJavaClass("android.net.Uri"))
+            using (var uri = uriClass.CallStatic<AndroidJavaObject>("parse", $"package:{packageName}"))
+            using (var intent = new AndroidJavaObject("android.content.Intent", action, uri))
+                s_CurrentActivity.Call("startActivity", intent);
+        }
+
+        /// <summary>
+        /// Whether app is ignoring device battery optimization settings.
+        /// When device is in power saving or similar restricted mode, scheduled notifications may not appear or be late.
+        /// </summary>
+        /// <seealso cref="RequestIgnoreBatteryOptimizations()"/>
+        public static bool IgnoringBatteryOptimizations
+        {
+            get
+            {
+                if (!Initialize())
+                    return false;
+                if (s_DeviceApiLevel < 23)
+                    return false;
+                using (var pm = s_CurrentActivity.Call<AndroidJavaObject>("getSystemService", "power"))
+                    return pm.Call<bool>("isIgnoringBatteryOptimizations", s_CurrentActivity.Call<string>("getPackageName"));
+            }
+        }
+
+        /// <summary>
+        /// Request user to allow unrestricted background work for app.
+        /// UI for it is provided by OS and is manufacturer specific. Recommended to explain user what to do before requesting.
+        /// App must have REQUEST_IGNORE_BATTERY_OPTIMIZATIONS permission to be able to request this.
+        /// </summary>
+        /// <seealso cref="AndroidExactSchedulingOption"/>
+        public static void RequestIgnoreBatteryOptimizations()
+        {
+            if (!Initialize())
+                return;
+            if (s_DeviceApiLevel < 23)
+                return;
+
+            StartActionForThisPackage("android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS");
+        }
+
+        /// <summary>
+        /// Register notification channel group.
+        /// </summary>
+        public static void RegisterNotificationChannelGroup(AndroidNotificationChannelGroup group)
+        {
+            if (!Initialize())
+                return;
+
+            if (string.IsNullOrEmpty(group.Id))
+                throw new Exception("Notification channel group ID is not specified.");
+            if (string.IsNullOrEmpty(group.Name))
+                throw new Exception("Notification channel group name is not specified.");
+
+            s_Jni.NotificationManager.RegisterNotificationChannelGroup(group);
+        }
+
+        /// <summary>
+        /// Delete notification channel group and all the channels in it.
+        /// </summary>
+        /// <param name="id">The ID of the group.</param>
+        public static void DeleteNotificationChannelGroup(string id)
+        {
+            if (Initialize())
+                s_Jni.NotificationManager.DeleteNotificationChannelGroup(id);
         }
 
         /// <summary>
@@ -709,6 +913,7 @@ namespace Unity.Notifications.Android
                 ch.CanShowBadge = channel.Get<bool>("canShowBadge");
                 ch.VibrationPattern = channel.Get<long[]>("vibrationPattern");
                 ch.LockScreenVisibility = channel.Get<int>("lockscreenVisibility").ToLockScreenVisibility();
+                ch.Group = channel.Get<string>("group");
 
                 channels[i] = ch;
             }
@@ -799,7 +1004,7 @@ namespace Unity.Notifications.Android
             {
                 using (var builder = CreateNotificationBuilder(id, notification, channelId))
                 {
-                    SendNotification(builder);
+                    ScheduleNotification(builder, false);
                 }
             }
         }
@@ -981,13 +1186,24 @@ namespace Unity.Notifications.Android
                 s_Jni.NotificationBuilder.SetAutoCancel(notificationBuilder, notification.ShouldAutoCancel);
             if (notification.Number >= 0)
                 s_Jni.NotificationBuilder.SetNumber(notificationBuilder, notification.Number);
-            if (notification.Style == NotificationStyle.BigTextStyle)
+            switch (notification.Style)
             {
-                using (var style = new AndroidJavaObject("android.app.Notification$BigTextStyle"))
-                {
-                    style.Call<AndroidJavaObject>("bigText", notification.Text).Dispose();
-                    s_Jni.NotificationBuilder.SetStyle(notificationBuilder, style);
-                }
+                case NotificationStyle.None:
+                    break;
+                case NotificationStyle.BigPictureStyle:
+                    if (notification.BigPicture.HasValue)
+                    {
+                        var bigPicture = notification.BigPicture.Value;
+                        s_Jni.NotificationManager.SetupBigPictureStyle(notificationBuilder, bigPicture);
+                    }
+                    break;
+                case NotificationStyle.BigTextStyle:
+                    using (var style = new AndroidJavaObject("android.app.Notification$BigTextStyle"))
+                    {
+                        style.Call<AndroidJavaObject>("bigText", notification.Text).Dispose();
+                        s_Jni.NotificationBuilder.SetStyle(notificationBuilder, style);
+                    }
+                    break;
             }
             long timestampValue = notification.ShowCustomTimestamp ? notification.CustomTimestamp.ToLong() : fireTime;
             s_Jni.NotificationBuilder.SetWhen(notificationBuilder, timestampValue);
@@ -1039,8 +1255,22 @@ namespace Unity.Notifications.Android
 
                 if (s_Jni.Bundle.ContainsKey(extras, s_Jni.Notification.EXTRA_BIG_TEXT))
                     notification.Style = NotificationStyle.BigTextStyle;
+                else if (s_Jni.Bundle.ContainsKey(extras, s_Jni.NotificationManager.KEY_BIG_PICTURE))
+                    notification.Style = NotificationStyle.BigPictureStyle;
                 else
                     notification.Style = NotificationStyle.None;
+
+                if (notification.Style == NotificationStyle.BigPictureStyle)
+                {
+                    var bigPicture = new BigPictureStyle();
+                    bigPicture.Picture = s_Jni.Bundle.GetString(extras, s_Jni.NotificationManager.KEY_BIG_PICTURE);
+                    bigPicture.LargeIcon = s_Jni.Bundle.GetString(extras, s_Jni.NotificationManager.KEY_BIG_LARGE_ICON);
+                    bigPicture.ContentTitle = s_Jni.Bundle.GetString(extras, s_Jni.NotificationManager.KEY_BIG_CONTENT_TITLE);
+                    bigPicture.ContentDescription = s_Jni.Bundle.GetString(extras, s_Jni.NotificationManager.KEY_BIG_CONTENT_DESCRIPTION);
+                    bigPicture.SummaryText = s_Jni.Bundle.GetString(extras, s_Jni.NotificationManager.KEY_BIG_SUMMARY_TEXT);
+                    bigPicture.ShowWhenCollapsed = s_Jni.Bundle.GetBoolean(extras, s_Jni.NotificationManager.KEY_BIG_SHOW_WHEN_COLLAPSED, false);
+                    notification.BigPicture = bigPicture;
+                }
 
                 notification.Color = s_Jni.NotificationManager.GetNotificationColor(notificationObj);
                 notification.Number = s_Jni.Notification.Number(notificationObj);

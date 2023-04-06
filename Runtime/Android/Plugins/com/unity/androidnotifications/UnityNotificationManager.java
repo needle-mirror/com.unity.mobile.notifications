@@ -1,11 +1,13 @@
 package com.unity.androidnotifications;
 
+import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
+import android.app.NotificationChannelGroup;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -14,7 +16,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -26,8 +30,8 @@ import static android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREG
 import static android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE;
 import static android.app.Notification.VISIBILITY_PUBLIC;
 
+import java.io.InputStream;
 import java.lang.Integer;
-import java.lang.reflect.Method;
 import java.util.Calendar;
 import java.util.Random;
 import java.util.Set;
@@ -51,21 +55,29 @@ public class UnityNotificationManager extends BroadcastReceiver {
     private ConcurrentHashMap<Integer, Notification.Builder> mScheduledNotifications;
     private NotificationCallback mNotificationCallback;
     private int mExactSchedulingSetting = -1;
-    private Method mCanScheduleExactAlarms;
 
+    private static final int PERMISSION_STATUS_ALLOWED = 1;
+    private static final int PERMISSION_STATUS_DENIED = 2;
+    private static final int PERMISSION_STATUS_NOTIFICATIONS_BLOCKED_FOR_APP = 5;
     static final String TAG_UNITY = "UnityNotifications";
 
-    static final String KEY_FIRE_TIME = "fireTime";
-    static final String KEY_ID = "id";
-    static final String KEY_INTENT_DATA = "data";
-    static final String KEY_LARGE_ICON = "largeIcon";
-    static final String KEY_REPEAT_INTERVAL = "repeatInterval";
-    static final String KEY_NOTIFICATION = "unityNotification";
-    static final String KEY_NOTIFICATION_ID = "com.unity.NotificationID";
-    static final String KEY_SMALL_ICON = "smallIcon";
-    static final String KEY_CHANNEL_ID = "channelID";
-    static final String KEY_SHOW_IN_FOREGROUND = "com.unity.showInForeground";
-    static final String KEY_NOTIFICATION_DISMISSED = "com.unity.NotificationDismissed";
+    public static final String KEY_FIRE_TIME = "fireTime";
+    public static final String KEY_ID = "id";
+    public static final String KEY_INTENT_DATA = "data";
+    public static final String KEY_LARGE_ICON = "largeIcon";
+    public static final String KEY_REPEAT_INTERVAL = "repeatInterval";
+    public static final String KEY_NOTIFICATION = "unityNotification";
+    public static final String KEY_NOTIFICATION_ID = "com.unity.NotificationID";
+    public static final String KEY_SMALL_ICON = "smallIcon";
+    public static final String KEY_CHANNEL_ID = "channelID";
+    public static final String KEY_SHOW_IN_FOREGROUND = "com.unity.showInForeground";
+    public static final String KEY_NOTIFICATION_DISMISSED = "com.unity.NotificationDismissed";
+    public static final String KEY_BIG_LARGE_ICON = "com.unity.BigLargeIcon";
+    public static final String KEY_BIG_PICTURE = "com.unity.BigPicture";
+    public static final String KEY_BIG_CONTENT_TITLE = "com.unity.BigContentTytle";
+    public static final String KEY_BIG_SUMMARY_TEXT = "com.unity.BigSummaryText";
+    public static final String KEY_BIG_CONTENT_DESCRIPTION = "com.unity.BigContentDescription";
+    public static final String KEY_BIG_SHOW_WHEN_COLLAPSED = "com.unity.BigShowWhenCollapsed";
 
     static final String NOTIFICATION_CHANNELS_SHARED_PREFS = "UNITY_NOTIFICATIONS";
     static final String NOTIFICATION_CHANNELS_SHARED_PREFS_KEY = "ChannelIDs";
@@ -101,10 +113,9 @@ public class UnityNotificationManager extends BroadcastReceiver {
                 PackageManager.DONT_KILL_APP);
         }
 
-        mOpenActivity = UnityNotificationUtilities.getOpenAppActivity(mContext, false);
+        mOpenActivity = UnityNotificationUtilities.getOpenAppActivity(mContext);
         if (mOpenActivity == null)
-            mOpenActivity = activity.getClass();
-
+            throw new RuntimeException("Failed to determine Activity to be opened when tapping notification");
         if (!mBackgroundThread.isAlive())
             mBackgroundThread.start();
     }
@@ -147,6 +158,41 @@ public class UnityNotificationManager extends BroadcastReceiver {
         return mContext.getApplicationInfo().targetSdkVersion;
     }
 
+    @TargetApi(Build.VERSION_CODES.N)
+    public int areNotificationsEnabled() {
+        boolean permissionGranted = true;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            permissionGranted = mContext.checkCallingOrSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        boolean notificationsEnabled = getNotificationManager().areNotificationsEnabled();
+        if (permissionGranted)
+            return notificationsEnabled ? PERMISSION_STATUS_ALLOWED : PERMISSION_STATUS_NOTIFICATIONS_BLOCKED_FOR_APP;
+        return PERMISSION_STATUS_DENIED;
+    }
+
+    public void registerNotificationChannelGroup(String id, String name, String description) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannelGroup group = new NotificationChannelGroup(id, name);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                group.setDescription(description);
+            }
+
+            getNotificationManager().createNotificationChannelGroup(group);
+        }
+    }
+
+    public void deleteNotificationChannelGroup(String id) {
+        if (id == null)
+            return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            getNotificationManager().deleteNotificationChannelGroup(id);
+        } else {
+            for (NotificationChannelWrapper c : getNotificationChannels()) {
+                if (id.equals(c.group))
+                    deleteNotificationChannel(c.id);
+            }
+        }
+    }
+
     public void registerNotificationChannel(
             String id,
             String name,
@@ -157,7 +203,8 @@ public class UnityNotificationManager extends BroadcastReceiver {
             boolean canBypassDnd,
             boolean canShowBadge,
             long[] vibrationPattern,
-            int lockscreenVisibility) {
+            int lockscreenVisibility,
+            String group) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(id, name, importance);
             channel.setDescription(description);
@@ -167,6 +214,7 @@ public class UnityNotificationManager extends BroadcastReceiver {
             channel.setShowBadge(canShowBadge);
             channel.setVibrationPattern(vibrationPattern);
             channel.setLockscreenVisibility(lockscreenVisibility);
+            channel.setGroup(group);
 
             getNotificationManager().createNotificationChannel(channel);
         } else {
@@ -192,6 +240,7 @@ public class UnityNotificationManager extends BroadcastReceiver {
             editor.putBoolean("canShowBadge", canShowBadge);
             editor.putString("vibrationPattern", Arrays.toString(vibrationPattern));
             editor.putInt("lockscreenVisibility", lockscreenVisibility);
+            editor.putString("group", group);
 
             editor.apply();
         }
@@ -222,6 +271,7 @@ public class UnityNotificationManager extends BroadcastReceiver {
         channel.canBypassDnd = prefs.getBoolean("canBypassDnd", false);
         channel.canShowBadge = prefs.getBoolean("canShowBadge", false);
         channel.lockscreenVisibility = prefs.getInt("lockscreenVisibility", VISIBILITY_PUBLIC);
+        channel.group = prefs.getString("group", null);
         String[] vibrationPatternStr = prefs.getString("vibrationPattern", "[]").split(",");
 
         long[] vibrationPattern = new long[vibrationPatternStr.length];
@@ -256,6 +306,7 @@ public class UnityNotificationManager extends BroadcastReceiver {
         wrapper.canShowBadge = channel.canShowBadge();
         wrapper.vibrationPattern = channel.getVibrationPattern();
         wrapper.lockscreenVisibility = channel.getLockscreenVisibility();
+        wrapper.group = channel.getGroup();
 
         return wrapper;
     }
@@ -367,7 +418,8 @@ public class UnityNotificationManager extends BroadcastReceiver {
         // fireTime not taken from notification, because we may have adjusted it
 
         // when rescheduling after boot notification may be absent
-        mScheduledNotifications.putIfAbsent(Integer.valueOf(id), notificationBuilder);
+        // also, we may be replacing an existing notification
+        mScheduledNotifications.put(Integer.valueOf(id), notificationBuilder);
         intent.putExtra(KEY_NOTIFICATION_ID, id);
 
         PendingIntent broadcast = getBroadcastPendingIntent(id, intent, PendingIntent.FLAG_UPDATE_CURRENT);
@@ -462,14 +514,14 @@ public class UnityNotificationManager extends BroadcastReceiver {
     }
 
     private PendingIntent getActivityPendingIntent(int id, Intent intent, int flags) {
-        if (Build.VERSION.SDK_INT >= 23)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
             return PendingIntent.getActivity(mContext, id, intent, flags | PendingIntent.FLAG_IMMUTABLE);
         else
             return PendingIntent.getActivity(mContext, id, intent, flags);
     }
 
     private PendingIntent getBroadcastPendingIntent(int id, Intent intent, int flags) {
-        if (Build.VERSION.SDK_INT >= 23)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
             return PendingIntent.getBroadcast(mContext, id, intent, flags | PendingIntent.FLAG_IMMUTABLE);
         else
             return PendingIntent.getBroadcast(mContext, id, intent, flags);
@@ -537,17 +589,12 @@ public class UnityNotificationManager extends BroadcastReceiver {
         if (Build.VERSION.SDK_INT < 31)
             return true;
 
-        try {
-            if (mCanScheduleExactAlarms == null)
-                mCanScheduleExactAlarms = AlarmManager.class.getMethod("canScheduleExactAlarms");
-            return (boolean)mCanScheduleExactAlarms.invoke(alarmManager);
-        } catch (NoSuchMethodException ex) {
-            Log.e(TAG_UNITY, "No AlarmManager.canScheduleExactAlarms() on Android 31+ device, should not happen", ex);
-            return false;
-        } catch (Exception ex) {
-            Log.e(TAG_UNITY, "AlarmManager.canScheduleExactAlarms() threw", ex);
-            return false;
-        }
+        return alarmManager.canScheduleExactAlarms();
+    }
+
+    public boolean canScheduleExactAlarms() {
+        AlarmManager alarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
+        return canScheduleExactAlarms(alarmManager);
     }
 
     // Call AlarmManager to set the broadcast intent with fire time and interval.
@@ -679,7 +726,11 @@ public class UnityNotificationManager extends BroadcastReceiver {
 
                 Class openActivity;
                 if (mOpenActivity == null) {
-                    openActivity = UnityNotificationUtilities.getOpenAppActivity(mContext, true);
+                    openActivity = UnityNotificationUtilities.getOpenAppActivity(mContext);
+                    if (openActivity == null) {
+                        Log.e(TAG_UNITY, "Activity not found, cannot show notification");
+                        return;
+                    }
                 }
                 else {
                     openActivity = mOpenActivity;
@@ -712,7 +763,8 @@ public class UnityNotificationManager extends BroadcastReceiver {
         }
 
         try {
-            mNotificationCallback.onSentNotification(notification);
+            if (mNotificationCallback != null)
+                mNotificationCallback.onSentNotification(notification);
         } catch (RuntimeException ex) {
             Log.w(TAG_UNITY, "Can not invoke OnNotificationReceived event when the app is not running!");
         }
@@ -737,15 +789,71 @@ public class UnityNotificationManager extends BroadcastReceiver {
 
     private void finalizeNotificationForDisplay(Notification.Builder notificationBuilder) {
         String icon = notificationBuilder.getExtras().getString(KEY_SMALL_ICON);
-        int iconId = UnityNotificationUtilities.findResourceIdInContextByName(mContext, icon);
-        if (iconId == 0) {
-            iconId = mContext.getApplicationInfo().icon;
+        Object ico = getIconForUri(icon);
+        if (ico != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            notificationBuilder.setSmallIcon((Icon)ico);
+        } else {
+            int iconId = UnityNotificationUtilities.findResourceIdInContextByName(mContext, icon);
+            if (iconId == 0) {
+                iconId = mContext.getApplicationInfo().icon;
+            }
+            notificationBuilder.setSmallIcon(iconId);
         }
-        notificationBuilder.setSmallIcon(iconId);
+
         icon = notificationBuilder.getExtras().getString(KEY_LARGE_ICON);
-        iconId = UnityNotificationUtilities.findResourceIdInContextByName(mContext, icon);
+        Object largeIcon = getIcon(icon);
+        if (largeIcon != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && largeIcon instanceof Icon)
+                notificationBuilder.setLargeIcon((Icon)largeIcon);
+            else
+                notificationBuilder.setLargeIcon((Bitmap)largeIcon);
+        }
+
+        setupBigPictureStyle(notificationBuilder);
+    }
+
+    private Object getIcon(String icon) {
+        if (icon == null || icon.length() == 0)
+            return null;
+        if (icon.charAt(0) == '/') {
+            BitmapFactory.decodeFile(icon);
+        }
+
+        Object ico = getIconForUri(icon);
+        if (ico != null)
+            return ico;
+
+        return getIconFromResources(icon, false);
+    }
+
+    private Object getIconForUri(String uri) {
+        if (uri == null || uri.length() == 0)
+            return null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && uri.indexOf("://") > 0) {
+            return Icon.createWithContentUri(uri);
+        }
+
+        return null;
+    }
+
+    private Object getIconFromResources(String name, boolean forceBitmap) {
+        int iconId = UnityNotificationUtilities.findResourceIdInContextByName(mContext, name);
         if (iconId != 0) {
-            notificationBuilder.setLargeIcon(BitmapFactory.decodeResource(mContext.getResources(), iconId));
+            if (!forceBitmap && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                return Icon.createWithResource(mContext, iconId);
+            return BitmapFactory.decodeResource(mContext.getResources(), iconId);
+        }
+
+        return null;
+    }
+
+    private Bitmap loadBitmap(String uri) {
+        try {
+            InputStream in = mContext.getContentResolver().openInputStream(Uri.parse(uri));
+            return BitmapFactory.decodeStream(in);
+        } catch (Exception e) {
+            Log.e(TAG_UNITY, "Failed to load image " + uri, e);
+            return null;
         }
     }
 
@@ -800,6 +908,64 @@ public class UnityNotificationManager extends BroadcastReceiver {
             notificationBuilder.getExtras().remove(keyName);
         else
             notificationBuilder.getExtras().putString(keyName, icon);
+    }
+
+    public void setupBigPictureStyle(Notification.Builder builder,
+            String largeIcon, String picture, String contentTitle, String contentDescription, String summaryText, boolean showWhenCollapsed) {
+        Bundle extras = builder.getExtras();
+        if (picture == null || picture.length() == 0)
+            return;
+        extras.putString(KEY_BIG_LARGE_ICON, largeIcon);
+        extras.putString(KEY_BIG_PICTURE, picture);
+        extras.putString(KEY_BIG_CONTENT_TITLE, contentTitle);
+        extras.putString(KEY_BIG_SUMMARY_TEXT, summaryText);
+        extras.putString(KEY_BIG_CONTENT_DESCRIPTION, contentDescription);
+        extras.putBoolean(KEY_BIG_SHOW_WHEN_COLLAPSED, showWhenCollapsed);
+    }
+
+    private void setupBigPictureStyle(Notification.Builder builder) {
+        Bundle extras = builder.getExtras();
+        String picture = extras.getString(KEY_BIG_PICTURE);
+        if (picture == null)
+            return;  // not big picture style
+        Notification.BigPictureStyle style = new Notification.BigPictureStyle();
+        String largeIcon = extras.getString(KEY_BIG_LARGE_ICON);
+        Object ico = getIcon(largeIcon);
+        if (ico != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && ico instanceof Icon)
+                style.bigLargeIcon((Icon)ico);
+            else
+                style.bigLargeIcon((Bitmap)ico);
+        }
+
+        if (picture.charAt(0) == '/') {
+            style.bigPicture(BitmapFactory.decodeFile(picture));
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && picture.indexOf("://") > 0) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Icon icon = Icon.createWithContentUri(picture);
+                style.bigPicture(icon);
+            } else {
+                Bitmap pic = loadBitmap(picture);
+                if (pic != null) {
+                    style.bigPicture(pic);
+                }
+            }
+        } else {
+            Object pic = getIconFromResources(picture, Build.VERSION.SDK_INT < Build.VERSION_CODES.S);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && pic instanceof Icon)
+                style.bigPicture((Icon)pic);
+            else if (pic instanceof Bitmap)
+                style.bigPicture((Bitmap)pic);
+        }
+
+        style.setBigContentTitle(extras.getString(KEY_BIG_CONTENT_TITLE));
+        style.setSummaryText(extras.getString(KEY_BIG_SUMMARY_TEXT));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            style.setContentDescription(extras.getString(KEY_BIG_CONTENT_DESCRIPTION));
+            style.showBigPictureWhenCollapsed(extras.getBoolean(KEY_BIG_SHOW_WHEN_COLLAPSED, false));
+        }
+
+        builder.setStyle(style);
     }
 
     public static void setNotificationColor(Notification.Builder notificationBuilder, int color) {
@@ -928,6 +1094,7 @@ class NotificationChannelWrapper {
     public boolean canShowBadge;
     public long[] vibrationPattern;
     public int lockscreenVisibility;
+    public String group;
 }
 
 // Implemented in C# to receive callback on notification show

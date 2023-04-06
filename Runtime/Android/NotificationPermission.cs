@@ -31,6 +31,12 @@ namespace Unity.Notifications.Android
         /// A request for permission was made and user hasn't responded yet.
         /// </summary>
         RequestPending = 4,
+
+        /// <summary>
+        /// Notifications are blocked for this app. Before API level 33 this means they were disabled in Settings.
+        /// <see cref="https://developer.android.com/reference/android/app/NotificationManager#areNotificationsEnabled()"/>
+        /// </summary>
+        NotificationsBlockedForApp = 5,
     }
 
     /// <summary>
@@ -61,18 +67,20 @@ namespace Unity.Notifications.Android
                 case PermissionStatus.NotRequested:
                 case PermissionStatus.Denied:
                 case PermissionStatus.DeniedDontAskAgain:  // this one is no longer used, but might be found in settings
-                    Status = PermissionStatus.RequestPending;
-                    RequestPermission();
+                    Status = RequestPermission();
                     break;
             }
         }
 
-        void RequestPermission()
+        PermissionStatus RequestPermission()
         {
+            if (!AndroidNotificationCenter.CanRequestPermissionToPost)
+                return PermissionStatus.Denied;
             var callbacks = new PermissionCallbacks();
             callbacks.PermissionGranted += (unused) => PermissionResponse(PermissionStatus.Allowed);
             callbacks.PermissionDenied += (unused) => PermissionResponse(PermissionStatus.Denied);
             Permission.RequestUserPermission(AndroidNotificationCenter.PERMISSION_POST_NOTIFICATIONS, callbacks);
+            return PermissionStatus.RequestPending;
         }
 
         void PermissionResponse(PermissionStatus status)

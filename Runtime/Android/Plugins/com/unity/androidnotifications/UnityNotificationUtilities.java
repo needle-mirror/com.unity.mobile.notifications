@@ -11,6 +11,7 @@ import android.app.Notification;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
@@ -30,6 +31,12 @@ import static com.unity.androidnotifications.UnityNotificationManager.KEY_NOTIFI
 import static com.unity.androidnotifications.UnityNotificationManager.KEY_REPEAT_INTERVAL;
 import static com.unity.androidnotifications.UnityNotificationManager.KEY_SMALL_ICON;
 import static com.unity.androidnotifications.UnityNotificationManager.KEY_SHOW_IN_FOREGROUND;
+import static com.unity.androidnotifications.UnityNotificationManager.KEY_BIG_LARGE_ICON;
+import static com.unity.androidnotifications.UnityNotificationManager.KEY_BIG_PICTURE;
+import static com.unity.androidnotifications.UnityNotificationManager.KEY_BIG_CONTENT_TITLE;
+import static com.unity.androidnotifications.UnityNotificationManager.KEY_BIG_SUMMARY_TEXT;
+import static com.unity.androidnotifications.UnityNotificationManager.KEY_BIG_CONTENT_DESCRIPTION;
+import static com.unity.androidnotifications.UnityNotificationManager.KEY_BIG_SHOW_WHEN_COLLAPSED;
 import static com.unity.androidnotifications.UnityNotificationManager.TAG_UNITY;
 
 class UnityNotificationUtilities {
@@ -42,7 +49,7 @@ class UnityNotificationUtilities {
     // magic stands for "Unity Mobile Notifications Notification"
     static final byte[] UNITY_MAGIC_NUMBER = new byte[] { 'U', 'M', 'N', 'N'};
     private static final byte[] UNITY_MAGIC_NUMBER_PARCELLED = new byte[] { 'U', 'M', 'N', 'P'};
-    private static final int NOTIFICATION_SERIALIZATION_VERSION = 2;
+    private static final int NOTIFICATION_SERIALIZATION_VERSION = 3;
     private static final int INTENT_SERIALIZATION_VERSION = 0;
 
     static final String SAVED_NOTIFICATION_PRIMARY_KEY = "data";
@@ -55,9 +62,9 @@ class UnityNotificationUtilities {
         try {
             Resources res = context.getResources();
             if (res != null) {
-                int id = res.getIdentifier(name, "mipmap", context.getPackageName());//, activity.getPackageName());
+                int id = res.getIdentifier(name, "mipmap", context.getPackageName());
                 if (id == 0)
-                    return res.getIdentifier(name, "drawable", context.getPackageName());//, activity.getPackageName());
+                    return res.getIdentifier(name, "drawable", context.getPackageName());
                 else
                     return id;
             }
@@ -148,6 +155,17 @@ class UnityNotificationUtilities {
             out.writeBoolean(showWhen);
             serializeString(out, notification.extras.getString(KEY_INTENT_DATA));
             out.writeBoolean(notification.extras.getBoolean(KEY_SHOW_IN_FOREGROUND, true));
+
+            String bigPicture = notification.extras.getString(KEY_BIG_PICTURE);
+            serializeString(out, bigPicture);
+            if (bigPicture != null && bigPicture.length() > 0) {
+                // the following only need to be put in if big picture is there
+                serializeString(out, notification.extras.getString(KEY_BIG_LARGE_ICON));
+                serializeString(out, notification.extras.getString(KEY_BIG_CONTENT_TITLE));
+                serializeString(out, notification.extras.getString(KEY_BIG_CONTENT_DESCRIPTION));
+                serializeString(out, notification.extras.getString(KEY_BIG_SUMMARY_TEXT));
+                out.writeBoolean(notification.extras.getBoolean(KEY_BIG_SHOW_WHEN_COLLAPSED, false));
+            }
 
             serializeString(out, Build.VERSION.SDK_INT < Build.VERSION_CODES.O ? null : notification.getChannelId());
             Integer color = UnityNotificationManager.getNotificationColor(notification);
@@ -280,6 +298,8 @@ class UnityNotificationUtilities {
             long fireTime, repeatInterval;
             boolean usesStopWatch, showWhen, showInForeground = true;
             Bundle extras = null;
+            String bigPicture = null, bigLargeIcon = null, bigContentTitle = null, bigSummary = null, bigContentDesc = null;
+            boolean bigShowWhenCollapsed = false;
             if (version < 2) {
                 // no longer serialized since v2
                 extras = deserializeParcelable(in);
@@ -301,6 +321,18 @@ class UnityNotificationUtilities {
                 intentData = deserializeString(in);
                 if (version > 0)
                     showInForeground = in.readBoolean();
+
+                if (version >= 3) {
+                    bigPicture = deserializeString(in);
+                    if (bigPicture != null && bigPicture.length() > 0) {
+                        // the following only need to be put in if big picture is there
+                        bigLargeIcon = deserializeString(in);
+                        bigContentTitle = deserializeString(in);
+                        bigContentDesc = deserializeString(in);
+                        bigSummary = deserializeString(in);
+                        bigShowWhenCollapsed = in.readBoolean();
+                    }
+                }
             } else {
                 title = extras.getString(Notification.EXTRA_TITLE);
                 text = extras.getString(Notification.EXTRA_TEXT);
@@ -327,7 +359,8 @@ class UnityNotificationUtilities {
             String sortKey = deserializeString(in);
             long when = showWhen ? in.readLong() : 0;
 
-            Notification.Builder builder = UnityNotificationManager.getNotificationManagerImpl(context).createNotificationBuilder(channelId);
+            UnityNotificationManager manager = UnityNotificationManager.getNotificationManagerImpl(context);
+            Notification.Builder builder = manager.createNotificationBuilder(channelId);
             if (extras != null)
                 builder.setExtras(extras);
             else {
@@ -348,6 +381,8 @@ class UnityNotificationUtilities {
                 builder.setContentText(text);
             if (bigText != null)
                 builder.setStyle(new Notification.BigTextStyle().bigText(bigText));
+            else if (bigPicture != null)
+                manager.setupBigPictureStyle(builder, bigLargeIcon, bigPicture, bigContentTitle, bigContentDesc, bigSummary, bigShowWhenCollapsed);
             if (haveColor)
                 UnityNotificationManager.setNotificationColor(builder, color);
             if (number >= 0)
@@ -476,46 +511,85 @@ class UnityNotificationUtilities {
         return null;
     }
 
-    protected static Class<?> getOpenAppActivity(Context context, boolean fallbackToDefault) {
-        ApplicationInfo ai = null;
+    // Returns Activity class to be opened when notification is tapped
+    // Search is done in this order:
+    //   * class specified in meta-data key custom_notification_android_activity
+    //   * the only enabled activity with name ending in either .UnityPlayerActivity or .UnityPlayerGameActivity
+    //   * the only enabled activity in the package
+    protected static Class<?> getOpenAppActivity(Context context) {
         try {
-            ai = context.getPackageManager().getApplicationInfo(context.getPackageName(), PackageManager.GET_META_DATA);
-        } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
-        }
-        Bundle bundle = ai.metaData;
+            PackageManager pm = context.getPackageManager();
+            ApplicationInfo ai = pm.getApplicationInfo(context.getPackageName(), PackageManager.GET_META_DATA);
+            Bundle bundle = ai.metaData;
 
-        String customActivityClassName = null;
-        Class activityClass = null;
-
-        if (bundle.containsKey("custom_notification_android_activity")) {
-            customActivityClassName = bundle.getString("custom_notification_android_activity");
-
-            try {
-                activityClass = Class.forName(customActivityClassName);
-            } catch (ClassNotFoundException ignored) {
-                ;
-            }
-        }
-
-        if (activityClass == null && fallbackToDefault) {
-            Log.w(TAG_UNITY, "No custom_notification_android_activity found, attempting to find app activity class");
-
-            String classToFind = "com.unity3d.player.UnityPlayerActivity";
-            try {
-                return Class.forName(classToFind);
-            } catch (ClassNotFoundException ignored) {
-                Log.w(TAG_UNITY, String.format("Attempting to find : %s, failed!", classToFind));
-                classToFind = String.format("%s.UnityPlayerActivity", context.getPackageName());
+            if (bundle.containsKey("custom_notification_android_activity")) {
                 try {
-                    return Class.forName(classToFind);
-                } catch (ClassNotFoundException ignored1) {
-                    Log.w(TAG_UNITY, String.format("Attempting to find class based on package name: %s, failed!", classToFind));
+                    return Class.forName(bundle.getString("custom_notification_android_activity"));
+                } catch (ClassNotFoundException e) {
+                    Log.e(TAG_UNITY, "Specified activity class for notifications not found: " + e.getMessage());
                 }
             }
+
+            Log.w(TAG_UNITY, "No custom_notification_android_activity found, attempting to find app activity class");
+
+            ActivityInfo[] aInfo = pm.getPackageInfo(context.getPackageName(), PackageManager.GET_ACTIVITIES).activities;
+            if (aInfo == null) {
+                Log.e(TAG_UNITY, "Could not get package activities");
+                return null;
+            }
+
+            String activityClassName = null;
+            boolean activityIsUnity = false, activityConflict = false;
+            for (ActivityInfo info : aInfo) {
+                // activity alias not supported
+                if (!info.enabled || info.targetActivity != null)
+                    continue;
+
+                boolean candidateIsUnity = isUnityActivity(info.name);
+                if (activityClassName == null) {
+                    activityClassName = info.name;
+                    activityIsUnity = candidateIsUnity;
+                    continue;
+                }
+
+                // two Unity activities is a hard conflict
+                // two non-Unity activities is a conflict unless we find a Unity activity later on
+                if (activityIsUnity == candidateIsUnity) {
+                    activityConflict = true;
+                    if (activityIsUnity && candidateIsUnity)
+                        break;
+                    continue;
+                }
+
+                if (candidateIsUnity) {
+                    activityClassName = info.name;
+                    activityIsUnity = candidateIsUnity;
+                    activityConflict = false;
+                }
+            }
+
+            if (activityConflict) {
+                Log.e(TAG_UNITY, "Multiple choices for activity for notifications, set activity explicitly in Notification Settings");
+                return null;
+            }
+
+            if (activityClassName == null) {
+                Log.e(TAG_UNITY, "Activity class for notifications not found");
+                return null;
+            }
+
+            return Class.forName(activityClassName);
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            Log.e(TAG_UNITY, "Failed to find activity class: " + e.getMessage());
         }
 
-        return activityClass;
+        return null;
+    }
+
+    private static boolean isUnityActivity(String name) {
+        return name.endsWith(".UnityPlayerActivity") || name.endsWith(".UnityPlayerGameActivity");
     }
 
     protected static Notification.Builder recoverBuilder(Context context, Notification notification) {
