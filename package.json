@@ -1,7 +1,7 @@
 {
   "name": "com.unity.mobile.notifications",
   "displayName": "Mobile Notifications",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "unity": "2020.3",
   "description": "Mobile Notifications package adds support for scheduling local repeatable or one-time notifications on iOS and Android.\n\nOn iOS receiving of push notifications is also supported.",
   "keywords": [
@@ -14,16 +14,16 @@
     "com.unity.modules.androidjni": "1.0.0"
   },
   "_upm": {
-    "changelog": "### Fixes:\n\n- Changing settings will make settings file editable if read-only by version control.\n- Documentation updates."
+    "changelog": "### Changes & Improvements:\n- [Android] - Reschedule after reboot will send all notifications that expired less than 10 minutes ago.\n- [iOS] - Remote notifications now support showInForeground key (allows to show notification while app is the foreground).\n\n### Fixes:\n- [Android] - [issue 271](https://github.com/Unity-Technologies/com.unity.mobile.notifications/issues/271) Fix possible ANR when sending/rescheduling after reboot.\n- [iOS] - Remote notification presentation options work regardless of when authorization is performed.\n- [iOS] - Remote notifications have presentation independent of whether callback is registered or not."
   },
   "upmCi": {
-    "footprint": "12f472805a8f7b1c727e6e491a17d284c93f15a6"
+    "footprint": "d341cca2f504c9e056313b054a7278b5bc375dad"
   },
   "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.mobile.notifications@2.2/manual/index.html",
   "repository": {
     "url": "https://github.com/Unity-Technologies/com.unity.mobile.notifications.git",
     "type": "git",
-    "revision": "3304aac282fce2960fb70ce28b42ee1e3770a210"
+    "revision": "0a9409942a2e3d6ea27e9009caccdfbc635dfc58"
   },
   "samples": [
     {
