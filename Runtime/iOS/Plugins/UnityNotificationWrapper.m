@@ -57,6 +57,17 @@ void _RequestAuthorization(void* request, int options, BOOL registerRemote)
     center.delegate = manager;
 }
 
+int _RegisteredForRemoteNotifications()
+{
+    return [UIApplication sharedApplication].registeredForRemoteNotifications;
+}
+
+void _UnregisterForRemoteNotifications()
+{
+    UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
+    [manager unregisterForRemoteNotifications];
+}
+
 void _ScheduleLocalNotification(iOSNotificationData data)
 {
     UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
@@ -315,19 +326,7 @@ void* _CreateUNNotificationCategory(const char* identifier, const char* hiddenPr
     NSArray<NSString*>* intents = (__bridge_transfer NSArray<NSString*>*)intentIdentifiers;
     UNNotificationCategoryOptions opts = (UNNotificationCategoryOptions)options;
 
-    UNNotificationCategory* category;
-    if (@available(iOS 12.0, *))
-    {
-        category = [UNNotificationCategory categoryWithIdentifier: idr actions: acts intentIdentifiers: intents hiddenPreviewsBodyPlaceholder: placeholder categorySummaryFormat: summary options: opts];
-    }
-    else if (@available(iOS 11.0, *))
-    {
-        category = [UNNotificationCategory categoryWithIdentifier: idr actions: acts intentIdentifiers: intents hiddenPreviewsBodyPlaceholder: placeholder options: opts];
-    }
-    else
-    {
-        category = [UNNotificationCategory categoryWithIdentifier: idr actions: acts intentIdentifiers: intents options: opts];
-    }
+    UNNotificationCategory* category = [UNNotificationCategory categoryWithIdentifier: idr actions: acts intentIdentifiers: intents hiddenPreviewsBodyPlaceholder: placeholder categorySummaryFormat: summary options: opts];
     return (__bridge_retained void*)category;
 }
 

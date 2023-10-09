@@ -1,11 +1,17 @@
-# Introduction
+# Mobile Notifications package
 
 The Unity Mobile Notifications package adds support for scheduling local one-time or repeatable notifications on Android and iOS.
 
+Notification functionality works differently on Android and iOS platforms. The mobile notifications package provides features in three sets of APIs for your convenience.
+
+* [Android](Android.md) specific APIs in `Unity.Notifications.Android` namespace.
+* [iOS](iOS.md) specific APIs in `Unity.Notifications.iOS` namespace.
+* [Unified APIs](Unified.md) that provide Android and iOS specific common functionalities in `Unity.Notifications` namespace.
+
 ### Requirements
 
-- Compatible with Unity 2020.3 or above.
-- Compatible with Android 5 (API 21) and iOS 10.0+.
+- Compatible with Unity 2021.3 or above.
+- Compatible with same minimum Android and iOS versions as the oldest supported Unity version.
 - Requires Android SDK with API level 33 or higher.
 - Requires Xcode with SDK for iOS 15.2 or newer.
 
