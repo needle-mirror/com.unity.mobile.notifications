@@ -1,7 +1,7 @@
 {
   "name": "com.unity.mobile.notifications",
   "displayName": "Mobile Notifications",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "unity": "2021.3",
   "description": "Mobile Notifications package adds support for scheduling local repeatable or one-time notifications on iOS and Android.\n\nOn iOS receiving of push notifications is also supported.",
   "keywords": [
@@ -14,16 +14,16 @@
     "com.unity.modules.androidjni": "1.0.0"
   },
   "_upm": {
-    "changelog": "### Changes & Improvements:\n\n- Added unified APIs for basic notifications that work on both platforms in the `Unity.Notifications` namespace.\n- Sample project modified to use unified APIs.\n- [Android] - Package now placed to Gradle project as a separate module (.androidlib).\n- [iOS] - Added APIs for checking and unregistering for push notifications.\n- [iOS] - Added new presentation options, supported since iOS 14 (list and banner).\n\n### Fixes:\n- [Android] - [issue 290](https://github.com/Unity-Technologies/com.unity.mobile.notifications/issues/290) Fix large icon not displayed when privided as file path."
+    "changelog": "### Fixes:\n- [Android] - Mark Android library to be compatible only with Android.\n- [iOS] - Calendar trigger will use local or UTC time depending on which one is set on trigger.\n- Various documentation fixes."
   },
   "upmCi": {
-    "footprint": "89659c5dd11c39164fd361690e2ed8849057abb0"
+    "footprint": "1ddc64190a018cc115ddf762fdcf7be76ef0f6cc"
   },
   "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.mobile.notifications@2.3/manual/index.html",
   "repository": {
     "url": "https://github.com/Unity-Technologies/com.unity.mobile.notifications.git",
     "type": "git",
-    "revision": "06b5a73dfd0570208d9c37d7d7fce2d90b8ef45b"
+    "revision": "7513f8c8811199d8400191a313cf7248311388ba"
   },
   "samples": [
     {
