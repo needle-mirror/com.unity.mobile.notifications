@@ -2,6 +2,13 @@
 
 All notable changes to this package will be documented in this file.
 
+## [2.4.0] - 2024-10-11
+
+### Changes & Improvements:
+
+- [iOS] Added a new API (QueryLastRespondedNotification) for retrieving notification details when an application is launched by tapping the notification.
+- [Android] In Unity 6 or later package uses AndroidProjectFilesModifier for better compatibility with incremental build.
+
 ## [2.3.2] - 2024-02-09
 
 ### Fixes:

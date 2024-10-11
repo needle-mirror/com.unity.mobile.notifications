@@ -8,7 +8,11 @@
 #import <objc/runtime.h>
 
 #import "UnityNotificationManager.h"
-#import "UnityAppController+Notifications.h"
+#import "Classes/PluginBase/AppDelegateListener.h"
+
+@interface UnityNotificationLifeCycleManager : NSObject
+
+@end
 
 @implementation UnityNotificationLifeCycleManager
 
@@ -16,17 +20,6 @@
 {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        [UnityNotificationLifeCycleManager sharedInstance];
-    });
-}
-
-+ (instancetype)sharedInstance;
-{
-    static UnityNotificationLifeCycleManager *sharedInstance = nil;
-    static dispatch_once_t onceToken;
-
-    dispatch_once(&onceToken, ^{
-        sharedInstance = [[UnityNotificationLifeCycleManager alloc] init];
         NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
 
         [nc addObserverForName: UIApplicationDidBecomeActiveNotification
@@ -43,30 +36,39 @@
          object: nil
          queue: [NSOperationQueue mainQueue]
          usingBlock:^(NSNotification *notification) {
-             [UnityNotificationManager sharedInstance].lastReceivedNotification = NULL;
+             UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
+             manager.launchedWithNotification = NO;
+             manager.lastReceivedNotification = NULL;
          }];
 
         [nc addObserverForName: kUnityWillFinishLaunchingWithOptions
          object: nil
          queue: [NSOperationQueue mainQueue]
          usingBlock:^(NSNotification *notification) {
-             [UNUserNotificationCenter currentNotificationCenter].delegate = [UnityNotificationManager sharedInstance];
-
-             BOOL authorizeOnLaunch = [[[NSBundle mainBundle] objectForInfoDictionaryKey: @"UnityNotificationRequestAuthorizationOnAppLaunch"] boolValue];
-             BOOL supportsPushNotification = [[[NSBundle mainBundle] objectForInfoDictionaryKey: @"UnityAddRemoteNotificationCapability"] boolValue];
+             UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
+             [UNUserNotificationCenter currentNotificationCenter].delegate = manager;
+             NSBundle* mainBundle = [NSBundle mainBundle];
+             BOOL authorizeOnLaunch = [[mainBundle objectForInfoDictionaryKey: @"UnityNotificationRequestAuthorizationOnAppLaunch"] boolValue];
+             BOOL supportsPushNotification = [[mainBundle objectForInfoDictionaryKey: @"UnityAddRemoteNotificationCapability"] boolValue];
              BOOL registerRemoteOnLaunch = supportsPushNotification == YES ?
-                 [[[NSBundle mainBundle] objectForInfoDictionaryKey: @"UnityNotificationRequestAuthorizationForRemoteNotificationsOnAppLaunch"] boolValue] : NO;
+                 [[mainBundle objectForInfoDictionaryKey: @"UnityNotificationRequestAuthorizationForRemoteNotificationsOnAppLaunch"] boolValue] : NO;
 
-             NSInteger defaultAuthorizationOptions = [[[NSBundle mainBundle] objectForInfoDictionaryKey: @"UnityNotificationDefaultAuthorizationOptions"] integerValue];
+             NSInteger defaultAuthorizationOptions = [[mainBundle objectForInfoDictionaryKey: @"UnityNotificationDefaultAuthorizationOptions"] integerValue];
 
              if (defaultAuthorizationOptions <= 0)
                  defaultAuthorizationOptions = (UNAuthorizationOptionSound + UNAuthorizationOptionAlert + UNAuthorizationOptionBadge);
 
+             if (notification != nil && notification.userInfo != nil)
+                 for (NSString* key in notification.userInfo)
+                     if ([key isEqual: @"UIApplicationLaunchOptionsLocalNotificationKey"]
+                         || [key isEqual: @"UIApplicationLaunchOptionsRemoteNotificationKey"])
+                     {
+                         manager.launchedWithNotification = YES;
+                         break;
+                     }
+
              if (authorizeOnLaunch)
-             {
-                 UnityNotificationManager* manager = [UnityNotificationManager sharedInstance];
                  [manager requestAuthorization: defaultAuthorizationOptions withRegisterRemote: registerRemoteOnLaunch forRequest: NULL];
-             }
          }];
 
         [nc addObserverForName: kUnityDidRegisterForRemoteNotificationsWithDeviceToken
@@ -87,7 +89,7 @@
              [manager finishRemoteNotificationRegistration: UNAuthorizationStatusDenied notification: notification];
          }];
     });
-    return sharedInstance;
 }
+
 @end
 #endif
