@@ -1,7 +1,7 @@
 {
   "name": "com.unity.mobile.notifications",
   "displayName": "Mobile Notifications",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "unity": "2021.3",
   "description": "Mobile Notifications package adds support for scheduling local repeatable or one-time notifications on iOS and Android.\n\nOn iOS receiving of push notifications is also supported.",
   "keywords": [
@@ -14,15 +14,15 @@
     "com.unity.modules.androidjni": "1.0.0"
   },
   "_upm": {
-    "changelog": "### Fixes:\n- [Android] Add missing proguard rule for NotificationChannelWrapper."
+    "changelog": "### Changes & Improvements:\n\n- Documentation updates."
   },
   "upmCi": {
-    "footprint": "a751e015372bd434f2fc70e19468784fee864763"
+    "footprint": "ff37ec252c10ead2b66816f352f6ec2bd76ad339"
   },
   "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.mobile.notifications@2.4/manual/index.html",
   "repository": {
     "url": "https://github.com/Unity-Technologies/com.unity.mobile.notifications.git",
     "type": "git",
-    "revision": "6cde88c42d5e47f1810284aded41399c52273425"
+    "revision": "e0004bb55c79532613716da45ee0e94922d77695"
   }
 }
