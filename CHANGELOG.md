@@ -2,6 +2,14 @@
 
 All notable changes to this package will be documented in this file.
 
+## [2.5.0] - 2026-09-21
+
+### Changes & Improvements:
+- Unity 6.0 or later is required.
+- [Android] Added ability to set default small icon when using unified API.
+- [iOS] Package is now compatible with the Swift Xcode project type in Unity 6.6 and later.
+- [iOS] Added support for scheduling notifications on particular weekdays.
+
 ## [2.4.3] - 2026-01-29
 
 ### Changes & Improvements:

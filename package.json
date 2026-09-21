@@ -1,8 +1,8 @@
 {
   "name": "com.unity.mobile.notifications",
   "displayName": "Mobile Notifications",
-  "version": "2.4.3",
-  "unity": "2021.3",
+  "version": "2.5.0",
+  "unity": "6000.0",
   "description": "Mobile Notifications package adds support for scheduling local repeatable or one-time notifications on iOS and Android.\n\nOn iOS receiving of push notifications is also supported.",
   "keywords": [
     "Android",
@@ -14,15 +14,22 @@
     "com.unity.modules.androidjni": "1.0.0"
   },
   "_upm": {
-    "changelog": "### Changes & Improvements:\n- [iOS] iOSNotificationCenter.OpenNotificationSettings now directly opens the notification settings page for your app on iOS 15.4 and later.\n\n### Fixes:\n- [iOS] Fixed push notifications not being ignored by the package when they are disabled in settings."
+    "changelog": "### Changes & Improvements:\n- Unity 6.0 or later is required.\n- [Android] Added ability to set default small icon when using unified API.\n- [iOS] Package is now compatible with the Swift Xcode project type in Unity 6.6 and later.\n- [iOS] Added support for scheduling notifications on particular weekdays."
   },
   "upmCi": {
-    "footprint": "744bc7368117dc72619622da0232d6903df0a4e1"
+    "footprint": "ea38d3cb3d76889075f46c06859e250abdc01439"
   },
-  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.mobile.notifications@2.4/manual/index.html",
+  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.mobile.notifications@2.5/manual/index.html",
   "repository": {
     "url": "https://github.com/Unity-Technologies/com.unity.mobile.notifications.git",
     "type": "git",
-    "revision": "988d7f7297ea83fb03f29f32f56cc105aaa6b0bd"
-  }
+    "revision": "efbf90e5a8f6d51b38d94c035262131d2bd672e7"
+  },
+  "samples": [
+    {
+      "displayName": "Notification Sample",
+      "description": "Mini game using notifications.",
+      "path": "Samples~/NotificationsSamples"
+    }
+  ]
 }

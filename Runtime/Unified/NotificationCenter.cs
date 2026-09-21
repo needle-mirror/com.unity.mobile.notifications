@@ -85,7 +85,7 @@ namespace Unity.Notifications
         /// A custom non-empty string to identify notification channel. Required, Android only.
         /// All notifications will be sent to this channel.
         /// Channel is created automatically during initialization if <see cref="AndroidChannelName"/> and <see cref="AndroidChannelDescription"/> are both set.
-        /// If name and description are left null, channel with given identifier has to be created manually (for example using <see cref="AndroidNotificationCenter.RegisterNotificationChannel(AndroidNotificationChannel)"/>).
+        /// If name and description are left null, channel with given identifier has to be created manually (for example using <see cref="Unity.Notifications.Android.AndroidNotificationCenter.RegisterNotificationChannel(AndroidNotificationChannel)"/>).
         /// </summary>
         public string AndroidChannelId { get; set; }
 
@@ -106,6 +106,12 @@ namespace Unity.Notifications
         /// </summary>
         /// <seealso cref="AndroidChannelId"/>
         public string AndroidChannelDescription { get; set; }
+
+        /// <summary>
+        /// Small icon to be used for all notifications on Android. Optional, application icon will be used if not set.
+        /// This value will be assigned to <see cref="Unity.Notifications.Android.AndroidNotification.SmallIcon"/>.
+        /// </summary>
+        public string AndroidSmallIcon { get; set; }
     }
 
     /// <summary>
@@ -144,10 +150,10 @@ namespace Unity.Notifications
         }
 
         /// <summary>
-        /// An event that fires when notification is received.
-        /// Application must be running for this event to work.
-        /// On Android this even fires if application is in foreground or when it's brought back from background.
-        /// On iOS this even only fires when notification is received while app is in foreground.
+        /// An event that fires when a notification is received.
+        /// The application must be running for this event to work.
+        /// On Android, this event fires when the application is in the foreground or when it's brought back from the background.
+        /// On iOS, this event only fires when a notification is received while the application is in the foreground.
         /// </summary>
         /// <remarks>
         /// This event is the same as AndroidNotificationCenter.OnNotificationReceived and iOSNotificationCenter.OnNotificationReceived.
@@ -275,6 +281,7 @@ namespace Unity.Notifications
 #if UNITY_ANDROID
             var n = (AndroidNotification)notification;
             schedule.Schedule(ref n);
+            n.SmallIcon = s_Args.AndroidSmallIcon;
             if (notification.Identifier.HasValue)
             {
                 AndroidNotificationCenter.SendNotificationWithExplicitID(n, category, notification.Identifier.Value);
